@@ -1,0 +1,1773 @@
+# MASTER DEVELOPMENT SPECIFICATION
+# AI Calling Agent Platform
+## Laravel 13 — Complete Product, Architecture & Implementation Requirements
+
+**Project type:** Full-stack AI voice calling platform  
+**Framework:** Laravel 13  
+**Primary objective:** Build a production-ready platform capable of making and receiving telephone calls using highly natural, real-time AI voice agents.
+
+---
+
+# 1. YOUR ROLE AND PRIMARY OBJECTIVE
+
+You are the lead software architect, senior Laravel developer, AI voice engineer, database architect, UI/UX designer, and QA engineer responsible for building this entire application.
+
+Your task is to design and implement a complete AI Calling Agent platform.
+
+This is NOT a simple chatbot, a basic telephone automation script, or a dashboard containing non-functional demonstrations.
+
+It must be a working application where administrators can configure AI providers, create voice agents, test conversations through a browser microphone, connect telephone services, and deploy agents to handle real incoming and outgoing calls.
+
+The finished application must be:
+
+- Easy to configure without programming knowledge.
+- Modular and provider-independent.
+- Capable of using free, low-cost and premium AI providers.
+- Designed for extremely natural, low-latency conversations.
+- Suitable for personal use and multiple businesses.
+- Secure and production-ready.
+- Extensible so new providers and features can be added without rewriting the application.
+
+## Critical development instructions
+
+1. Inspect the existing repository before making changes.
+2. Preserve working functionality if this is an existing project.
+3. Never assume an API supports a feature without verifying its documentation.
+4. Never display a simulated successful API connection as a real successful connection.
+5. Never use fake call records, fake transcripts or fake AI responses in production functionality.
+6. Clearly distinguish implemented functionality from planned functionality.
+7. Do not leave essential buttons, forms, settings or dashboard actions non-functional.
+8. Do not put API keys in frontend JavaScript or publicly accessible configuration.
+9. Do not build the entire application as one enormous controller or service.
+10. Write automated tests for critical functionality.
+11. Implement the project in stages and verify each stage before continuing.
+12. Maintain documentation throughout development.
+
+If a feature requires an external API, implement the actual integration where credentials are available. If credentials are unavailable, build its configuration interface, adapter contract and setup instructions, and clearly mark it as awaiting credentials.
+
+Do not claim that an integration is operational until it has passed a real connection and functionality test.
+
+---
+
+# 2. PRODUCT VISION
+
+The platform should allow an administrator to create AI agents that can behave like natural human telephone assistants.
+
+Examples of intended applications:
+
+- AI receptionist.
+- Customer support representative.
+- Appointment booking assistant.
+- Sales assistant.
+- Lead qualification agent.
+- Business information assistant.
+- Customer follow-up agent.
+- Order status assistant.
+- General-purpose AI telephone assistant.
+
+The AI must be capable of:
+
+- Receiving incoming calls.
+- Making outgoing calls.
+- Listening to natural speech.
+- Understanding conversational context.
+- Responding naturally through generated speech.
+- Handling interruptions.
+- Recognizing when someone has finished speaking.
+- Asking relevant follow-up questions.
+- Remembering information within the active conversation.
+- Accessing configured business knowledge.
+- Transferring calls to human representatives.
+- Ending conversations appropriately.
+
+The system must not force conversations into rigid question-and-answer sequences unless the administrator specifically configures such a workflow.
+
+---
+
+# 3. TECHNOLOGY STACK
+
+Use the following technology choices unless there is a documented technical reason to recommend an alternative.
+
+## Backend
+
+- Laravel 13.
+- PHP 8.3 or newer, compatible with Laravel 13 requirements.
+- MySQL 8 or a compatible supported database.
+- Redis for caching, queues and real-time state where available.
+- Laravel queues for asynchronous jobs.
+- Laravel Reverb for live dashboard updates.
+- Laravel scheduler for recurring tasks.
+- Laravel Sanctum or an appropriate authentication solution.
+- Laravel policies, gates and middleware for authorization.
+
+Verify the actual installed environment before selecting versions.
+
+## Frontend
+
+Use Laravel's existing frontend stack if one already exists.
+
+For a new application, use:
+
+- Blade or the chosen Laravel frontend architecture.
+- Tailwind CSS.
+- Alpine.js or Vue where appropriate.
+- Responsive layouts.
+- WebRTC for browser-based audio communication.
+- A suitable waveform/audio visualization library.
+
+Avoid unnecessary frontend complexity.
+
+## Voice infrastructure
+
+Preferred architecture:
+
+- LiveKit Agents for real-time voice orchestration.
+- WebRTC for browser conversations.
+- SIP integration for telephone connectivity.
+- A separate Python or Node.js voice worker where required.
+- Provider adapters for speech, language models and telephony.
+
+Do not attempt to handle continuous real-time audio streams inside ordinary PHP request-response controllers.
+
+## Infrastructure
+
+Support:
+
+- Local development.
+- Linux server deployment.
+- Docker-based deployment where appropriate.
+- Redis.
+- Database migrations.
+- Background workers.
+- Secure environment configuration.
+- Object storage for recordings and documents.
+- Health checks and monitoring.
+
+The application should remain usable in development without requiring every optional service to be installed.
+
+---
+
+# 4. OVERALL SYSTEM ARCHITECTURE
+
+Build a modular architecture with the following layers.
+
+### Layer A: Laravel application
+
+Responsible for:
+
+- Authentication.
+- Users and organizations.
+- Administration.
+- Agent creation and configuration.
+- Provider management.
+- API credential storage.
+- Knowledge management.
+- Call records.
+- Billing and usage tracking.
+- Webhooks.
+- Reporting.
+- Permissions.
+- Application settings.
+
+### Layer B: Voice orchestration
+
+Responsible for:
+
+- Establishing voice sessions.
+- Managing audio streams.
+- Speech recognition.
+- Speech generation.
+- Conversation state.
+- Turn detection.
+- Interruptions.
+- Provider communication.
+- Voice session recovery.
+- Human handoff.
+
+### Layer C: AI provider integrations
+
+Responsible for:
+
+- Realtime speech-to-speech models.
+- Speech-to-text providers.
+- Language models.
+- Text-to-speech providers.
+- Local/self-hosted models.
+- Provider fallback.
+
+### Layer D: Communication channels
+
+Support:
+
+- Browser-based voice.
+- Incoming telephone calls.
+- Outgoing telephone calls.
+- SIP connections.
+- Future messaging channels through extensible adapters.
+
+### Layer E: Storage and analytics
+
+Responsible for:
+
+- Conversations.
+- Call transcripts.
+- Recordings.
+- Summaries.
+- Provider usage.
+- Costs.
+- Performance metrics.
+- Audit logs.
+
+Maintain clear boundaries between these layers.
+
+---
+
+# 5. ADMIN DASHBOARD
+
+Build a professional, modern, responsive administration interface.
+
+The dashboard must be easy enough for a non-technical business owner to operate.
+
+## Main navigation
+
+Create the following sections:
+
+1. Overview.
+2. AI Agents.
+3. Voice Playground.
+4. Incoming Calls.
+5. Outgoing Calls.
+6. Call Campaigns.
+7. Phone Numbers.
+8. AI Providers.
+9. Voice Providers.
+10. Telephony Providers.
+11. Knowledge Base.
+12. Integrations.
+13. Call History.
+14. Transcripts.
+15. Analytics.
+16. Usage and Costs.
+17. Users and Organizations.
+18. Notifications.
+19. Settings.
+20. Documentation and Help.
+
+Use appropriate navigation groups instead of overwhelming the administrator with every item at once.
+
+## Dashboard overview
+
+Show actual information from the database and connected services.
+
+Include:
+
+- Total calls.
+- Incoming calls.
+- Outgoing calls.
+- Active calls.
+- Completed calls.
+- Failed calls.
+- Missed calls.
+- Average call duration.
+- Total AI usage.
+- Estimated total costs.
+- Number of active agents.
+- Provider connection status.
+- Current system health.
+
+Include date filters and useful charts.
+
+Do not display invented statistics.
+
+## Global system status
+
+Provide clear indicators for:
+
+- Database connectivity.
+- Redis connectivity.
+- Queue worker availability.
+- Voice worker availability.
+- AI provider connectivity.
+- Telephony connectivity.
+- Storage availability.
+
+Show actionable error messages.
+
+---
+
+# 6. USER AND ORGANIZATION ARCHITECTURE
+
+Design the application to support both single-owner and multi-business operation.
+
+Implement tenant-ready database architecture.
+
+Entities should include:
+
+- Users.
+- Organizations.
+- Organization memberships.
+- Roles.
+- Permissions.
+- Organization settings.
+- Subscription or usage plans.
+
+A platform administrator should be able to manage the entire installation.
+
+An organization administrator should only be able to manage their organization's resources.
+
+A normal organization user should have permissions assigned by their administrator.
+
+Prevent cross-organization data access at the database query, authorization and API levels.
+
+Support single-administrator deployments without requiring unnecessary multi-tenant setup.
+
+---
+
+# 7. AI PROVIDER MANAGEMENT
+
+This is one of the most important modules.
+
+Administrators must be able to configure providers through the web interface without editing PHP files or environment variables.
+
+Create a centralized provider management system.
+
+## Provider categories
+
+Separate these categories clearly:
+
+### A. Realtime speech-to-speech
+
+Examples:
+
+- OpenAI Realtime API.
+- Google Gemini Live API.
+- Other compatible realtime audio providers.
+
+### B. Speech-to-text
+
+Examples:
+
+- OpenAI transcription services.
+- Google speech recognition.
+- Deepgram.
+- faster-whisper.
+- Other compatible services.
+
+### C. Language models
+
+Examples:
+
+- OpenAI.
+- Google Gemini.
+- Anthropic.
+- Compatible OpenAI-style API providers.
+- Ollama.
+- Other supported local models.
+
+### D. Text-to-speech
+
+Examples:
+
+- OpenAI TTS.
+- Google TTS.
+- ElevenLabs.
+- Piper.
+- Other supported services.
+
+### E. Telephony
+
+Examples:
+
+- Twilio.
+- SIP-compatible providers.
+- Other supported telephony gateways.
+
+Provider availability and compatibility must be verified against current official documentation.
+
+## Provider configuration fields
+
+Each provider configuration should support:
+
+- Provider name.
+- Provider category.
+- Display name.
+- API endpoint.
+- API key.
+- Organization or project identifier where applicable.
+- Selected model.
+- Additional configuration.
+- Enabled/disabled status.
+- Default provider designation.
+- Fallback designation.
+- Connection status.
+- Last successful connection test.
+- Last error.
+- Supported capabilities.
+
+Do not assume every provider uses the same authentication method.
+
+## API credential management
+
+Requirements:
+
+- Encrypt credentials at rest.
+- Mask stored credentials in the interface.
+- Never return secret values in ordinary API responses.
+- Never print credentials in application logs.
+- Allow credentials to be replaced.
+- Allow credentials to be deleted.
+- Provide permission checks.
+- Support platform-level and organization-level credentials.
+
+## Connection testing
+
+Each provider needs a real test button.
+
+The test should:
+
+1. Validate the configured credentials.
+2. Verify API connectivity.
+3. Verify the selected model or service where possible.
+4. Report the actual response.
+5. Display a useful error when unsuccessful.
+6. Store the test timestamp and result.
+
+Distinguish between a successful authentication test and a successful end-to-end voice test.
+
+## Provider comparison and recommendations
+
+Create an informational provider comparison page.
+
+Show:
+
+- Free-tier availability.
+- Paid usage model.
+- Estimated pricing.
+- Voice quality considerations.
+- Expected latency characteristics.
+- Language support.
+- Streaming support.
+- Interruption support.
+- SIP support.
+- Browser compatibility.
+- Self-hosting options.
+- Setup difficulty.
+- Documentation links.
+
+Pricing information must be configurable and dated.
+
+Never hardcode an outdated price as a guaranteed current price.
+
+Provide setup instructions for each provider.
+
+---
+
+# 8. PROVIDER-INDEPENDENT ADAPTER SYSTEM
+
+Do not tightly couple agents to one provider.
+
+Create standardized interfaces and provider adapters.
+
+Suggested interfaces:
+
+- RealtimeVoiceProviderInterface.
+- SpeechToTextProviderInterface.
+- LanguageModelProviderInterface.
+- TextToSpeechProviderInterface.
+- TelephonyProviderInterface.
+
+Implement a ProviderManager responsible for:
+
+- Resolving provider configurations.
+- Instantiating adapters.
+- Validating capabilities.
+- Selecting defaults.
+- Handling failures.
+- Selecting compatible fallbacks.
+
+Do not force realtime providers into an artificial STT → LLM → TTS pipeline.
+
+Support two distinct voice architectures.
+
+### Architecture 1: Native realtime speech-to-speech
+
+Audio goes to a realtime model and generated speech comes back as a stream.
+
+Prefer this architecture for the most natural conversations.
+
+### Architecture 2: Modular voice pipeline
+
+Audio input → STT → LLM → TTS → audio output.
+
+Support streaming at every possible stage.
+
+This architecture is useful for low-cost, local and interchangeable provider combinations.
+
+### Compatibility validation
+
+Before an agent is activated, validate:
+
+- Provider compatibility.
+- Required model capabilities.
+- Supported languages.
+- Audio input/output formats.
+- Voice availability.
+- Streaming support.
+- Telephony compatibility.
+- Required API credentials.
+
+Never silently replace a configured model with an incompatible one.
+
+---
+
+# 9. AI AGENT BUILDER
+
+Build a guided AI agent creation wizard.
+
+The administrator should not need to understand AI model configuration to create an agent.
+
+## Step 1: Basic information
+
+Fields:
+
+- Agent name.
+- Description.
+- Business name.
+- Agent purpose.
+- Agent category.
+- Organization.
+- Status.
+
+## Step 2: Personality
+
+Allow the administrator to configure:
+
+- Friendly.
+- Professional.
+- Formal.
+- Casual.
+- Empathetic.
+- Sales-oriented.
+- Support-oriented.
+- Custom personality.
+
+Provide an editable custom personality description.
+
+## Step 3: Language and voice
+
+Support configurable:
+
+- Primary language.
+- Additional languages.
+- Voice.
+- Accent.
+- Speaking speed.
+- Voice pitch where supported.
+- Speaking style.
+- Response length.
+- Conversational tone.
+
+Include Urdu, English and Hindi as important language options, subject to provider support.
+
+Support natural language switching during conversations when the selected provider permits it.
+
+Do not claim that a provider supports a voice or language unless verified.
+
+## Step 4: AI configuration
+
+Allow selection of:
+
+- Realtime provider.
+- STT provider.
+- LLM provider.
+- TTS provider.
+- Models.
+- Voice.
+- Temperature or equivalent model settings.
+- Maximum response length.
+- Timeout.
+- Fallback provider.
+
+Only display settings supported by the selected provider.
+
+## Step 5: Agent instructions
+
+Provide a large editable system-instructions field.
+
+Include a template generator with configurable sections:
+
+- Agent identity.
+- Business identity.
+- Main objective.
+- Responsibilities.
+- Conversation style.
+- Business knowledge.
+- Limitations.
+- Escalation instructions.
+- Call-ending rules.
+
+The administrator must be able to edit and preview the final instructions.
+
+## Step 6: Call behavior
+
+Configure:
+
+- Incoming call greeting.
+- Outgoing call introduction.
+- Maximum call duration.
+- Silence timeout.
+- Maximum silence retries.
+- Human handoff behavior.
+- Call transfer destination.
+- Business working hours.
+- Out-of-hours response.
+- Call ending behavior.
+- Recording policy.
+- Consent messaging.
+
+## Step 7: Knowledge base
+
+Allow the agent to use selected business documents and FAQs.
+
+## Step 8: Testing
+
+Allow the agent to be tested before activation.
+
+## Step 9: Deployment
+
+Allow telephone numbers and call routes to be assigned.
+
+An agent must not become active until all required configuration checks pass.
+
+---
+
+# 10. NATURAL HUMAN-LIKE CONVERSATION ENGINE
+
+This is the most important technical objective of the product.
+
+The system should feel like a real conversation, not an automated IVR.
+
+## Required conversational capabilities
+
+### A. Low latency
+
+Use streaming audio rather than waiting for complete recordings.
+
+Reduce delays between the end of a caller's speech and the start of the AI's response.
+
+Set an initial engineering target of approximately 500–800 ms from detected end of turn to first audible response under favorable network and provider conditions.
+
+Measure actual latency. Do not promise this target without testing.
+
+Record:
+
+- Audio input latency.
+- End-of-turn detection time.
+- AI processing time.
+- First audio output time.
+- Total response latency.
+
+### B. Voice activity detection
+
+Detect:
+
+- When the caller starts speaking.
+- When speech ends.
+- Background noise.
+- Long pauses.
+- Silence.
+- Potential interruptions.
+
+Use configurable voice activity detection and turn-detection settings.
+
+### C. Barge-in and interruption handling
+
+The caller must be able to interrupt the AI naturally.
+
+When interruption occurs:
+
+1. Detect caller speech.
+2. Stop or cancel the current AI speech output.
+3. Preserve the correct conversation context.
+4. Process the new speech.
+5. Respond to the latest input.
+
+Prevent old audio from continuing after an interruption.
+
+### D. Natural conversational language
+
+The AI should:
+
+- Avoid robotic phrases.
+- Avoid unnecessarily long responses.
+- Use natural acknowledgements.
+- Ask relevant follow-up questions.
+- Avoid repeatedly greeting the caller.
+- Avoid repeating information unnecessarily.
+- Adapt response length to the conversation.
+- Handle corrections.
+- Understand contextual references.
+- Avoid speaking over the caller.
+
+Do not force artificial filler sounds or scripted human-like imperfections.
+
+### E. Conversation memory
+
+Maintain session context.
+
+Track:
+
+- Caller information.
+- Questions asked.
+- Answers given.
+- User preferences stated during the call.
+- Actions taken.
+- Outstanding questions.
+- Conversation objective.
+
+Support configurable conversation summaries and future CRM integration.
+
+Never mix conversation information between different calls.
+
+### F. Error recovery
+
+If the caller is unclear:
+
+- Ask for clarification.
+- Avoid inventing what was said.
+- Offer repetition.
+
+If a provider disconnects:
+
+- Attempt configured recovery.
+- Switch to a compatible fallback if possible.
+- Inform the caller appropriately.
+- Record the failure.
+
+### G. Natural call endings
+
+Detect when the conversation is complete.
+
+End politely without abruptly disconnecting.
+
+---
+
+# 11. BROWSER VOICE PLAYGROUND
+
+This is a mandatory core feature.
+
+Build a dedicated voice testing interface.
+
+An administrator should be able to open a web page, allow microphone access and talk to the AI agent.
+
+Use WebRTC or the appropriate provider-supported real-time audio transport.
+
+## Interface
+
+Include:
+
+- Agent selector.
+- Provider selector where applicable.
+- Voice selector.
+- Start conversation.
+- End conversation.
+- Microphone mute/unmute.
+- Speaker controls.
+- Live audio waveform.
+- Microphone activity indicator.
+- AI speaking indicator.
+- Live transcript.
+- Conversation history.
+- Connection status.
+- Latency measurements.
+- Token usage.
+- Estimated cost.
+
+## Testing modes
+
+Support:
+
+1. Test the currently saved agent.
+2. Test unsaved configuration changes.
+3. Compare different voices.
+4. Compare compatible AI providers.
+5. Test different languages.
+6. Test interruption behavior.
+7. Test knowledge-base responses.
+
+Unsaved testing must not modify the published agent.
+
+## Session behavior
+
+Each test session should:
+
+- Have its own session ID.
+- Use the selected agent configuration.
+- Maintain independent context.
+- Record actual provider usage.
+- Support session termination.
+- Clean up audio resources.
+- Avoid leaving open microphone streams after termination.
+
+## Browser security
+
+Use secure browser contexts.
+
+Request microphone permission explicitly.
+
+Never expose permanent API credentials to the browser.
+
+Use authenticated, short-lived session credentials or backend-issued session authorization.
+
+---
+
+# 12. INCOMING TELEPHONE CALLS
+
+Build a complete inbound calling module.
+
+## Required functionality
+
+- Connect a supported telephony provider.
+- Register or configure phone numbers.
+- Receive incoming call webhooks.
+- Verify webhook signatures.
+- Identify the destination number.
+- Identify the associated organization.
+- Identify the assigned AI agent.
+- Initialize a real-time voice session.
+- Connect caller audio to the voice engine.
+- Stream generated AI audio back to the caller.
+- Handle call disconnection.
+- Save call records.
+- Save transcripts.
+- Generate summaries.
+
+## Incoming call flow
+
+1. A caller dials the configured number.
+2. Telephony provider receives the call.
+3. Laravel verifies the incoming webhook.
+4. The platform identifies the destination and assigned agent.
+5. The voice engine creates a session.
+6. The AI begins the configured greeting.
+7. The conversation continues naturally.
+8. The AI completes the task or transfers the call.
+9. The call ends.
+10. The platform saves the final call information.
+
+Support multiple concurrent incoming calls within configured capacity.
+
+Do not assume every telephony provider has identical audio streaming functionality.
+
+---
+
+# 13. OUTGOING TELEPHONE CALLS
+
+Build a complete outbound calling module.
+
+## Individual calls
+
+Allow an authorized administrator to:
+
+- Enter a destination number.
+- Select an AI agent.
+- Review the call objective.
+- Initiate the call.
+- Monitor the call status.
+- Terminate the call.
+
+## Campaign calling
+
+Support:
+
+- Campaign name.
+- Selected agent.
+- Contact list.
+- CSV contact import.
+- Contact validation.
+- Time-zone-aware scheduling.
+- Calling hours.
+- Maximum concurrent calls.
+- Retry policy.
+- Maximum attempts.
+- Call status tracking.
+- Campaign reports.
+
+## Campaign safety
+
+Implement:
+
+- Consent and lawful-contact requirements.
+- Do-not-call lists.
+- Contact suppression.
+- Duplicate detection.
+- Per-campaign limits.
+- Per-user limits.
+- Rate limits.
+- Emergency campaign shutdown.
+
+Do not create a system that blindly calls unlimited numbers.
+
+## Outbound call flow
+
+1. Administrator creates a campaign.
+2. Contacts are imported and validated.
+3. The campaign is checked against calling restrictions.
+4. The administrator reviews the campaign.
+5. The campaign is activated.
+6. A background queue processes eligible contacts.
+7. The telephony provider places the call.
+8. The AI agent conducts the conversation.
+9. The result is recorded.
+10. Campaign analytics are updated.
+
+Support manual and scheduled calls.
+
+---
+
+# 14. TELEPHONY PROVIDER MANAGEMENT
+
+Create a separate telephony provider management module.
+
+Initial integration target:
+
+- Twilio.
+- Generic SIP configuration where technically supported.
+
+Allow additional providers through adapters.
+
+Configuration fields:
+
+- Provider.
+- Account identifier.
+- Authentication credentials.
+- SIP settings.
+- Phone number.
+- Webhook configuration.
+- Connection status.
+- Default outbound provider.
+- Incoming routing configuration.
+
+Provide setup instructions for each provider.
+
+Include a genuine telephone connectivity test where supported.
+
+Support inbound and outbound audio streaming.
+
+Do not confuse a provider's ability to place calls with its ability to provide bidirectional real-time audio.
+
+---
+
+# 15. KNOWLEDGE BASE AND DOCUMENT PROCESSING
+
+Build a knowledge-management system.
+
+Supported uploads should include:
+
+- PDF.
+- DOCX.
+- TXT.
+- CSV.
+- Other formats where reliable extraction is supported.
+
+Features:
+
+- Upload documents.
+- Extract text.
+- Preview extracted content.
+- Organize documents.
+- Assign documents to agents.
+- Delete documents.
+- Reprocess documents.
+- Track processing status.
+
+Implement a retrieval system using embeddings and vector search.
+
+Possible technologies include PostgreSQL with pgvector, a compatible vector database, or another suitable retrieval solution.
+
+Keep this functionality modular.
+
+The AI should:
+
+- Retrieve relevant information.
+- Answer from available evidence.
+- Avoid inventing prices or business policies.
+- Admit when information is unavailable.
+- Ask the caller whether they would like human assistance.
+
+Implement appropriate document isolation between organizations.
+
+---
+
+# 16. HUMAN HANDOFF
+
+Build a proper human escalation system.
+
+The AI should be able to transfer a call when:
+
+- The caller requests a human.
+- The issue requires human authorization.
+- The AI cannot answer reliably.
+- The caller is dissatisfied.
+- A configured business rule requires escalation.
+
+Support:
+
+- Configured transfer numbers.
+- SIP destinations.
+- Transfer status.
+- Transfer failure handling.
+- Optional call summary for the human representative.
+
+The AI must not claim a successful transfer until the telephony provider confirms it.
+
+---
+
+# 17. CALL RECORDS, TRANSCRIPTS AND ANALYTICS
+
+Create a detailed call history.
+
+Each call should contain:
+
+- Call ID.
+- Organization.
+- Agent.
+- Caller number.
+- Destination number.
+- Incoming/outgoing direction.
+- Provider.
+- Start time.
+- End time.
+- Duration.
+- Call status.
+- Transcript.
+- Recording reference where enabled.
+- Summary.
+- Outcome.
+- Estimated AI cost.
+- Telephony cost.
+- Error information.
+
+## Transcript interface
+
+Display conversations in a readable format.
+
+Distinguish between:
+
+- Caller.
+- AI agent.
+- Human representative.
+- System events.
+
+Where supported, retain timestamps.
+
+Allow authorized users to search and filter transcripts.
+
+## Call summaries
+
+Generate:
+
+- Purpose of call.
+- Main questions.
+- Important information.
+- Actions taken.
+- Follow-up requirements.
+- Call outcome.
+
+## Analytics
+
+Show:
+
+- Calls per day.
+- Incoming vs outgoing calls.
+- Successful calls.
+- Failed calls.
+- Average duration.
+- Average response latency.
+- AI usage.
+- Telephony costs.
+- Provider performance.
+- Agent performance.
+- Campaign results.
+
+Do not mix estimated costs with confirmed provider billing data.
+
+Clearly identify estimated values.
+
+---
+
+# 18. COST MANAGEMENT AND USAGE LIMITS
+
+The application must support cost-conscious operation.
+
+Build usage tracking by:
+
+- Organization.
+- Agent.
+- Provider.
+- Model.
+- Call.
+- Campaign.
+- Date range.
+
+Track, where available:
+
+- Input tokens.
+- Output tokens.
+- Audio input usage.
+- Audio output usage.
+- Transcription usage.
+- Speech synthesis usage.
+- Call minutes.
+- Telephony charges.
+- Estimated total costs.
+
+Allow administrators to configure:
+
+- Daily limits.
+- Monthly limits.
+- Maximum call duration.
+- Maximum concurrent calls.
+- Maximum campaign size.
+- Per-agent limits.
+- Per-user limits.
+
+When limits are reached:
+
+- Prevent new calls where configured.
+- Display a clear explanation.
+- Never abruptly terminate an active emergency or safety-critical interaction without an explicitly configured policy.
+- Record the event.
+
+Create a configurable provider pricing table.
+
+---
+
+# 19. SECURITY AND PRIVACY
+
+Security is mandatory.
+
+Implement:
+
+- Authentication.
+- Role-based permissions.
+- Organization isolation.
+- API key encryption.
+- CSRF protection.
+- Request validation.
+- Rate limiting.
+- Webhook signature verification.
+- Secure file uploads.
+- Secure storage.
+- Audit logging.
+- Private recording access.
+- Short-lived browser voice credentials.
+- Secure session management.
+
+## Recording and consent
+
+Call recording must be configurable.
+
+Support:
+
+- Recording disabled.
+- Recording enabled with appropriate consent.
+- Configurable consent announcements.
+- Retention policies.
+- Authorized playback.
+- Deletion policies.
+
+Do not assume that recording or outbound calling is lawful everywhere.
+
+Provide configuration and documentation for applicable consent, privacy, data protection, telemarketing and calling requirements.
+
+Do not silently record calls.
+
+---
+
+# 20. DATABASE DESIGN
+
+Create normalized, indexed database tables with appropriate foreign keys.
+
+At minimum, evaluate and implement the following entities:
+
+### Identity and tenancy
+
+- users
+- organizations
+- organization_members
+- roles
+- permissions
+- organization_settings
+
+### AI configuration
+
+- ai_providers
+- ai_provider_credentials
+- ai_provider_models
+- voice_providers
+- telephony_providers
+- provider_connection_tests
+- agent_provider_assignments
+
+### Agents
+
+- agents
+- agent_versions
+- agent_instructions
+- agent_voices
+- agent_languages
+- agent_settings
+- agent_knowledge_assignments
+
+### Knowledge
+
+- knowledge_bases
+- knowledge_documents
+- document_chunks
+- document_embeddings
+- document_processing_jobs
+
+### Calls
+
+- calls
+- call_sessions
+- call_events
+- call_transcripts
+- call_recordings
+- call_summaries
+- call_costs
+- call_transfers
+
+### Telephony
+
+- phone_numbers
+- phone_number_assignments
+- inbound_routes
+- outbound_routes
+
+### Campaigns
+
+- campaigns
+- campaign_contacts
+- campaign_attempts
+- contact_suppressions
+- do_not_call_entries
+
+### Usage
+
+- provider_usage
+- usage_limits
+- usage_alerts
+- billing_records
+
+### Platform operations
+
+- audit_logs
+- notifications
+- webhooks
+- system_health_checks
+
+You may adjust the schema where technically necessary.
+
+Provide migrations, relationships, indexes, constraints and factories.
+
+Use soft deletion where appropriate, especially where data-retention requirements permit it.
+
+Never store raw API secrets in ordinary database text fields.
+
+---
+
+# 21. QUEUES, EVENTS AND REAL-TIME UPDATES
+
+Use Laravel queues for:
+
+- Campaign processing.
+- Document processing.
+- Transcript processing.
+- Call summaries.
+- Analytics aggregation.
+- Notifications.
+- Non-real-time provider operations.
+
+Use events for:
+
+- Call started.
+- Call answered.
+- AI started speaking.
+- Caller started speaking.
+- Call interrupted.
+- Call transferred.
+- Call completed.
+- Call failed.
+- Provider disconnected.
+
+Use Laravel Reverb or another suitable real-time mechanism for dashboard updates.
+
+Do not use Laravel queues as a substitute for continuous low-latency audio streaming.
+
+Implement retry strategies and idempotency for webhook processing.
+
+---
+
+# 22. USER EXPERIENCE AND UI DESIGN
+
+The application must look like a professional modern SaaS product.
+
+Design requirements:
+
+- Clean dashboard.
+- Modern typography.
+- Consistent spacing.
+- Responsive layouts.
+- Accessible controls.
+- Clear status indicators.
+- Useful empty states.
+- Loading indicators.
+- Form validation.
+- Confirmation dialogs for destructive actions.
+- Search, sorting and filtering.
+- Helpful tooltips.
+- Guided onboarding.
+
+Provide both light and dark modes if practical.
+
+Avoid cluttered interfaces.
+
+Use simple descriptions for technical settings.
+
+Every API configuration screen should include a link to the relevant official documentation and a clear explanation of what the setting does.
+
+The administrator should not need to understand SIP, WebRTC, STT, TTS or model tokens to complete ordinary agent setup.
+
+Provide advanced settings separately.
+
+---
+
+# 23. DOCUMENTATION AND SETUP WIZARD
+
+Create an initial setup wizard.
+
+It should guide the administrator through:
+
+1. Application configuration.
+2. Database verification.
+3. Redis verification.
+4. Queue worker verification.
+5. Voice engine configuration.
+6. First AI provider configuration.
+7. First telephony provider configuration.
+8. First AI agent creation.
+9. First browser voice test.
+10. First telephone test.
+
+Allow optional services to be skipped during initial setup.
+
+Create documentation covering:
+
+- Installation.
+- Environment variables.
+- Database migrations.
+- Queue workers.
+- Redis.
+- Reverb.
+- Voice worker setup.
+- LiveKit setup.
+- WebRTC setup.
+- Provider configuration.
+- SIP configuration.
+- Telephone webhooks.
+- HTTPS and production deployment.
+- Troubleshooting.
+- Security.
+- Backup and restoration.
+
+Create a clear `.env.example` without real credentials.
+
+Never place real secrets in source control.
+
+---
+
+# 24. TESTING AND QUALITY ASSURANCE
+
+Implement automated tests throughout development.
+
+## Laravel tests
+
+Test:
+
+- Authentication.
+- Permissions.
+- Organization isolation.
+- Provider CRUD.
+- Credential encryption.
+- Agent creation.
+- Agent updates.
+- Configuration validation.
+- Knowledge uploads.
+- Call record creation.
+- Webhook verification.
+- Webhook idempotency.
+- Usage limits.
+- Campaign restrictions.
+
+## Provider tests
+
+Test:
+
+- Valid credentials.
+- Invalid credentials.
+- Provider unavailable.
+- Unsupported model.
+- Unsupported voice.
+- Connection timeout.
+- Fallback behavior.
+
+Use mocks for automated unit tests, but separately verify real integrations with actual credentials.
+
+## Voice tests
+
+Test:
+
+- Browser microphone connection.
+- Browser audio playback.
+- Conversation initialization.
+- Speech recognition.
+- Speech generation.
+- Turn detection.
+- Interruptions.
+- Cancellation of old audio.
+- Context retention.
+- Session termination.
+- Reconnection.
+- Concurrent sessions.
+
+## Telephony tests
+
+Test:
+
+- Incoming call.
+- Outgoing call.
+- Answered call.
+- Rejected call.
+- Busy call.
+- No answer.
+- Disconnection.
+- Transfer.
+- Webhook retry.
+- Provider failure.
+
+## Acceptance criteria
+
+Do not consider the platform complete simply because its dashboard loads.
+
+A complete release must demonstrate:
+
+1. An administrator can configure a real AI provider.
+2. The provider connection can be tested.
+3. An AI agent can be created.
+4. The agent can be tested using a real browser microphone.
+5. The AI can listen and respond using real audio.
+6. Interruptions work.
+7. Conversations maintain context.
+8. An actual incoming telephone call can be handled.
+9. An actual outgoing telephone call can be placed.
+10. Call transcripts and records are saved.
+11. Usage is tracked.
+12. Permissions and organization isolation work.
+13. Errors are handled properly.
+14. The application can be installed and deployed using documented instructions.
+
+Where a feature is blocked by unavailable credentials or infrastructure, document that limitation rather than falsely passing the test.
+
+---
+
+# 25. DEVELOPMENT PHASES
+
+Build the application in controlled phases.
+
+Do not attempt to implement everything in one operation.
+
+## Phase 1 — Foundation
+
+- Inspect repository.
+- Set up Laravel 13.
+- Configure database.
+- Authentication.
+- Admin dashboard.
+- Organization architecture.
+- Roles and permissions.
+- Basic settings.
+
+**Completion:** Working application foundation.
+
+## Phase 2 — Provider infrastructure
+
+- Provider models.
+- Provider adapters.
+- Credential encryption.
+- Provider configuration interface.
+- Connection testing.
+- Provider documentation.
+- Capability validation.
+
+**Completion:** Administrators can configure and test actual providers.
+
+## Phase 3 — AI agent builder
+
+- Agent creation wizard.
+- Personality.
+- Instructions.
+- Voice configuration.
+- Model selection.
+- Language selection.
+- Agent versions.
+- Agent validation.
+
+**Completion:** Administrators can create and save functional AI agent configurations.
+
+## Phase 4 — Browser voice playground
+
+- Voice worker.
+- WebRTC.
+- Microphone access.
+- Audio streaming.
+- Live conversation.
+- Interruption handling.
+- Live transcript.
+- Latency measurement.
+- Usage tracking.
+
+**Completion:** A user can speak naturally with the configured AI through the browser.
+
+This phase is a major milestone. Prioritize making it work reliably before building telephone campaigns.
+
+## Phase 5 — Incoming telephone calls
+
+- Telephony integration.
+- SIP or provider streaming.
+- Incoming webhooks.
+- Number assignment.
+- Agent routing.
+- Call records.
+- Call lifecycle management.
+
+**Completion:** Real incoming calls are answered by configured agents.
+
+## Phase 6 — Outgoing telephone calls
+
+- Manual calling.
+- Campaign management.
+- Contact import.
+- Scheduling.
+- Call queues.
+- Retry handling.
+- Calling restrictions.
+
+**Completion:** Real outgoing calls work.
+
+## Phase 7 — Knowledge and business tools
+
+- Document uploads.
+- Text extraction.
+- Knowledge retrieval.
+- Agent knowledge assignments.
+- Business-specific tools.
+- Human transfer.
+
+**Completion:** Agents can answer questions using configured business information.
+
+## Phase 8 — Analytics and costs
+
+- Call history.
+- Transcripts.
+- Summaries.
+- Usage reports.
+- Cost estimation.
+- Provider performance.
+- Campaign reports.
+
+**Completion:** Administrators can understand call activity and operating costs.
+
+## Phase 9 — Production hardening
+
+- Security audit.
+- Load testing.
+- Concurrent call testing.
+- Error recovery.
+- Monitoring.
+- Backup.
+- Deployment documentation.
+
+**Completion:** Production-ready release candidate.
+
+---
+
+# 26. FUTURE EXTENSIBILITY
+
+Design the architecture to allow future additions without rewriting the core.
+
+Potential features:
+
+- WhatsApp integration.
+- SMS.
+- CRM integrations.
+- Calendar integration.
+- Appointment booking.
+- Payment integrations.
+- Customer database lookups.
+- Email integrations.
+- Custom API tools.
+- Webhook-based workflows.
+- Multiple AI agents working together.
+- Call sentiment and quality analytics.
+- Agent performance evaluation.
+- Custom voice profiles.
+- Additional languages.
+- White-label deployments.
+- Subscription billing.
+
+Do not implement all future features immediately. Ensure the architecture can accommodate them.
+
+---
+
+# 27. PROJECT MANAGEMENT RULES FOR THE CODING AGENT
+
+These instructions are mandatory.
+
+### Before development
+
+First inspect:
+
+- Existing project files.
+- Laravel version.
+- PHP version.
+- Installed packages.
+- Database configuration.
+- Existing frontend.
+- Existing routes.
+- Existing authentication.
+- Current tests.
+- Available infrastructure.
+
+Then produce:
+
+1. Architecture overview.
+2. Proposed directory structure.
+3. Database design.
+4. Provider integration plan.
+5. Development milestones.
+6. External dependencies.
+7. Known technical risks.
+
+Do not begin with destructive changes.
+
+### During development
+
+For every phase:
+
+1. Explain what you are implementing.
+2. Identify the relevant files.
+3. Implement the feature.
+4. Run migrations.
+5. Run relevant tests.
+6. Fix failures.
+7. Verify the feature.
+8. Update documentation.
+9. Report what is complete and what remains.
+
+Keep a `PROJECT_STATUS.md` file.
+
+Maintain:
+
+- `ARCHITECTURE.md`
+- `DATABASE_DESIGN.md`
+- `PROVIDER_SETUP.md`
+- `VOICE_ENGINE.md`
+- `INSTALLATION.md`
+- `TESTING.md`
+- `PROJECT_STATUS.md`
+- `CHANGELOG.md`
+
+Do not mark a feature complete merely because its code exists.
+
+### When encountering problems
+
+Do not silently remove requirements to make tests pass.
+
+Do not replace a broken real integration with a fake response.
+
+Explain:
+
+- What failed.
+- Why it failed.
+- What options exist.
+- Which solution you recommend.
+
+Prefer maintainable fixes over temporary workarounds.
+
+### Communication style
+
+I am building this project iteratively.
+
+Use clear, beginner-friendly explanations when reporting implementation progress.
+
+Do not overwhelm me with unnecessary technical terminology.
+
+Explain commands before asking me to execute them.
+
+Do not ask me to manually configure something that could reasonably be configured through the application interface.
+
+Ask questions only when an important architectural decision cannot reasonably be made using the requirements in this specification.
+
+---
+
+# 28. FINAL DEFINITION OF DONE
+
+The project is considered successfully delivered when it is a genuinely usable AI Calling Agent platform, not merely a prototype.
+
+The administrator must be able to:
+
+1. Log in.
+2. Configure AI provider credentials.
+3. Test provider connectivity.
+4. Configure a telephony provider.
+5. Create an AI agent.
+6. Select its voice, language and personality.
+7. Add custom instructions.
+8. Add business knowledge.
+9. Open the browser voice playground.
+10. Speak directly to the agent.
+11. Hear natural AI responses.
+12. Interrupt the AI naturally.
+13. Review conversation transcripts.
+14. Assign the agent to a phone number.
+15. Receive real telephone calls.
+16. Make real telephone calls.
+17. Manage calling campaigns.
+18. Review call recordings where enabled and consented to.
+19. Review call costs and usage.
+20. Manage users and permissions.
+21. Monitor system health.
+22. Configure and switch compatible AI providers.
+
+The application must support both low-cost/self-hosted and paid configurations, with clear instructions and honest limitations.
+
+The most important quality objective is natural, fast and reliable voice interaction.
+
+Do not sacrifice conversational quality for a large collection of unfinished features.
+
+**Priority order:**
+
+1. Reliable real-time voice engine.
+2. Natural conversational experience.
+3. Working browser voice playground.
+4. Working incoming and outgoing telephone calls.
+5. Easy provider and agent configuration.
+6. Knowledge base and human handoff.
+7. Usage management and analytics.
+8. Advanced features and integrations.
+
+Build a solid foundation first, then expand it.
+
+**Start by inspecting the existing repository and presenting the implementation plan. Do not generate the entire application in one uncontrolled batch.**
