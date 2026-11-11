@@ -82,6 +82,7 @@ final class GeminiAdapter implements ProviderAdapter
         $items = $seen = [];
         $token = null;
         $snake = $key === 'voices';
+        $maxItems = 5000;
         for ($page = 0; $page < config('providers.max_pages'); $page++) {
             $query = array_merge($extra, [$snake ? 'page_size' : 'pageSize' => 1000]);
             if ($token) {
@@ -89,7 +90,7 @@ final class GeminiAdapter implements ProviderAdapter
             }
             $data = $this->http->get('gemini', $path, $credentials, $query, $deadline);
             $items = array_merge($items, ProviderHttpClient::list($data, $key));
-            if (count($items) > 1000) {
+            if (count($items) > $maxItems) {
                 throw new ProviderFailure('catalog_limit', 200);
             }
             $token = $data[$snake ? 'next_page_token' : 'nextPageToken'] ?? null;

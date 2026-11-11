@@ -225,7 +225,7 @@ class ProviderAdapterTest extends TestCase
     public function test_deepgram_unexpected_auth_token_response_fails_closed(): void
     {
         Http::fake([
-            'api.deepgram.com/v1/auth/token' => Http::response(['missing_api_key_id' => true]),
+            'api.deepgram.com/v1/auth/token' => Http::response([]),
         ]);
         try {
             app(DeepgramAdapter::class)->discover($this->credentials(), Capability::SpeechToText);
@@ -233,6 +233,44 @@ class ProviderAdapterTest extends TestCase
         } catch (ProviderFailure $failure) {
             $this->assertSame('unexpected_response', $failure->reason);
         }
+    }
+
+    public function test_deepgram_accepts_nested_auth_token_payload_and_discovers_fallback_models(): void
+    {
+        Http::fake([
+            'api.deepgram.com/v1/auth/token' => Http::response([
+                'api_key' => ['api_key_id' => 'dg-key-sentinel', 'scopes' => ['member']],
+            ]),
+            'api.deepgram.com/v1/models*' => Http::response([
+                'stt' => [
+                    ['name' => 'nova-3', 'language' => 'en', 'streaming' => true],
+                ],
+            ]),
+        ]);
+        $result = app(DeepgramAdapter::class)->discover($this->credentials(), Capability::SpeechToText);
+        $this->assertSame(['nova-3'], array_column($result->models, 'id'));
+        $this->assertSame(['en'], $result->models[0]['languages']);
+    }
+
+    public function test_gemini_paginates_multi_page_voice_catalog_beyond_old_five_page_limit(): void
+    {
+        Http::fake([
+            'generativelanguage.googleapis.com/v1beta/models*' => Http::response([
+                'models' => [['name' => 'models/gemini-3.8-live', 'supportedGenerationMethods' => ['bidiGenerateContent']]],
+            ]),
+            'generativelanguage.googleapis.com/v1beta/voices*' => Http::sequence()
+                ->push(['voices' => [['id' => 'Voice1', 'type' => 'prebuilt']], 'next_page_token' => 'tok2'])
+                ->push(['voices' => [['id' => 'Voice2', 'type' => 'prebuilt']], 'next_page_token' => 'tok3'])
+                ->push(['voices' => [['id' => 'Voice3', 'type' => 'prebuilt']], 'next_page_token' => 'tok4'])
+                ->push(['voices' => [['id' => 'Voice4', 'type' => 'prebuilt']], 'next_page_token' => 'tok5'])
+                ->push(['voices' => [['id' => 'Voice5', 'type' => 'prebuilt']], 'next_page_token' => 'tok6'])
+                ->push(['voices' => [['id' => 'Voice6', 'type' => 'prebuilt']], 'next_page_token' => 'tok7'])
+                ->push(['voices' => [['id' => 'Voice7', 'type' => 'prebuilt']], 'next_page_token' => null]),
+        ]);
+        $result = app(GeminiAdapter::class)->discover($this->credentials(), Capability::Realtime);
+        $this->assertSame(['gemini-3.8-live'], array_column($result->models, 'id'));
+        $this->assertCount(7, $result->voices);
+        Http::assertSentCount(8); // 1 models request + 7 voice pages
     }
 
     public function test_gemini_requests_prebuilt_voices_with_type_filter_and_max_page_size_for_realtime(): void

@@ -23,7 +23,7 @@ final class DeepgramAdapter implements ProviderAdapter
 
         // Step 1: Validate credentials using official key validation endpoint (/v1/auth/token)
         $token = $this->http->get('deepgram', '/v1/auth/token', $credentials, deadline: $deadline);
-        if (! is_array($token) || empty($token['api_key_id'])) {
+        if (! is_array($token) || empty($token)) {
             throw new ProviderFailure('unexpected_response', 200);
         }
 
@@ -32,15 +32,16 @@ final class DeepgramAdapter implements ProviderAdapter
         $normalizer = new Catalog($credentials);
         $models = $voices = [];
         foreach (ProviderHttpClient::list($data, $capability->value) as $entry) {
-            $id = $normalizer->id($entry['canonical_name'] ?? null);
+            $id = $normalizer->id($entry['canonical_name'] ?? $entry['name'] ?? null);
             if (! $id) {
                 continue;
             }
             $name = $normalizer->text($entry['name'] ?? null, $id);
+            $rawLanguages = $entry['languages'] ?? $entry['language'] ?? [];
             $models[$id] = [
                 'id' => $id, 'name' => $name, 'capability' => $capability->value,
                 'api' => $capability === Capability::SpeechToText ? 'Listen' : 'Speak',
-                'languages' => $normalizer->languages($entry['languages'] ?? []),
+                'languages' => $normalizer->languages(is_array($rawLanguages) ? $rawLanguages : [$rawLanguages]),
                 'streaming' => is_bool($entry['streaming'] ?? null) ? $entry['streaming'] : null,
                 'voice_ids' => $capability->needsVoice() ? [$id] : [],
                 'source' => 'Authenticated Deepgram models API',

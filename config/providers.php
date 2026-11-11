@@ -8,8 +8,8 @@ use App\Services\Providers\Adapters\OpenAiAdapter;
 return [
     'reviewed_on' => '2026-11-10',
     'catalog_ttl_hours' => 24,
-    'max_pages' => 5,
-    'test_budget_seconds' => 25,
+    'max_pages' => 50,
+    'test_budget_seconds' => 30,
     'definitions' => [
         'openai' => [
             'name' => 'OpenAI', 'initials' => 'O', 'adapter' => OpenAiAdapter::class,
