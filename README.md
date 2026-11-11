@@ -19,6 +19,10 @@ php artisan serve --host=0.0.0.0 --port=8000
 
 `setup` installs the locked dependencies, creates `.env` if missing, creates a local SQLite database, generates an application key **only if none exists**, runs migrations, and builds the frontend. It does not seed a shared login, demo calls, or test transcripts. Open the application and create your own account.
 
+**Full guided setup (LiveKit, voice worker, four dev processes, first browser call):** follow the
+numbered terminal guide in [COMMAND_MANUAL.md](COMMAND_MANUAL.md). For a production server, run
+`sudo bash bin/install.sh` instead. Verify any installation with `php artisan voca:doctor`.
+
 The built assets are served by Laravel; a separate Vite server is not needed for this preview. For frontend development, use `composer run dev`.
 
 ## What works
@@ -53,7 +57,7 @@ vendor/bin/pint --test
 voice-worker/.venv/bin/python -m pytest voice-worker/tests -q
 voice-worker/.venv/bin/ruff check voice-worker
 
-# JavaScript unit suite (18 tests, Prettier clean)
+# JavaScript unit suite (24 tests, Prettier clean)
 npm run test:unit
 npm run format:check
 

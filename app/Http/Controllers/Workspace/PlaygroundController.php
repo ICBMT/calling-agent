@@ -46,6 +46,12 @@ class PlaygroundController extends Controller
                 'available' => $blockers === [], 'choices' => $choices, 'agents' => $agents->toArray(),
                 'active' => $activeStatus && ! $activeStatus['ended_at'] ? $activeStatus : null,
                 'session_seconds' => (int) config('voice.session_seconds'),
+                // Browser fetches must follow the real named routes, never a hardcoded prefix.
+                'endpoints' => [
+                    'store' => route('workspace.voice-sessions.store'),
+                    'show' => route('workspace.voice-sessions.show', ['session' => '__SESSION__']),
+                    'destroy' => route('workspace.voice-sessions.destroy', ['session' => '__SESSION__']),
+                ],
             ],
         ]);
     }

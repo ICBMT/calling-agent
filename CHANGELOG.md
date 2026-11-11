@@ -1,5 +1,35 @@
 # Changelog
 
+## 2026-11-11 — Playground repair & guided setup
+
+### Fixed
+
+- **Browser voice session endpoints:** the Playground JavaScript previously called
+  `/workspace/voice-sessions*` while Laravel registers those routes under the `/app` prefix, so
+  every session start, status poll, and stop request failed with a 404 in a real browser. The
+  controller now hands the real `route()` URLs to the page (`endpoints` in the voice options
+  payload) and the Alpine controller consumes them with a placeholder-safe, same-origin-only
+  resolver. Regression coverage: PHP feature test asserting the rendered routes, plus four JS
+  unit tests (resolution, fallback, unsafe override rejection, encoding).
+- **Server error contract:** the session-start error handler now reads the actual
+  `{code, message}` shape rendered by `VoiceExceptionBoundary` (it previously only looked for
+  non-existent `reason`/`error_code` keys and masked the real failure category).
+- **Stale single-provider copy:** `provider_auth`/`provider_quota`/`unsupported_provider`
+  browser messages no longer name OpenAI exclusively; they match the current multi-provider
+  (OpenAI Realtime + Google Gemini Live) server-side wording. The Gemini adapter's stale
+  "worker audio transport is not yet implemented" catalog warning was corrected as well.
+
+### Added
+
+- **`COMMAND_MANUAL.md`:** a strictly numbered terminal setup guide (40 steps) covering system
+  prerequisites, one-command app install, LiveKit server config, Laravel ↔ Python worker secret
+  alignment, the four development processes, `voca:doctor` verification, the first real browser
+  call walkthrough, and the production systemd/Nginx path.
+- `.env.example` voice section now documents `VOICE_WORKER_HEALTH_URL` and safe/unsafe
+  `LIVEKIT_URL` schemes with generation commands for `VOICE_WORKER_SECRET`.
+
+---
+
 ## 2026-11-10 — Milestone 3: Real-Time Browser Voice Engine
 
 ### Added

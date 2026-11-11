@@ -19,6 +19,7 @@ function getTransportModule() {
 export function voicePlayground(initialOptions = null) {
     return {
         options: null,
+        endpoints: { store: '', show: '', destroy: '' },
         provider: '',
         agentId: '',
         model: '',
@@ -86,9 +87,47 @@ export function voicePlayground(initialOptions = null) {
                 }
             }
             this.options = config || {};
+            this.endpoints = this.resolveEndpoints(this.options.endpoints);
             this.applyInitialConfig();
             this.bindPageLifecycle();
             getTransportModule().catch(() => {});
+        },
+
+        // Session endpoints come from the server's route() output; the path must never be
+        // guessed from a hardcoded prefix that can drift away from the registered routes.
+        resolveEndpoints(endpoints) {
+            let base = '/app';
+            if (
+                typeof window !== 'undefined' &&
+                typeof window.location?.pathname === 'string' &&
+                window.location.pathname.endsWith('/playground')
+            ) {
+                base = window.location.pathname.slice(0, -'/playground'.length) || '/app';
+            }
+            const fallback = {
+                store: `${base}/voice-sessions`,
+                show: `${base}/voice-sessions/__SESSION__`,
+                destroy: `${base}/voice-sessions/__SESSION__`,
+            };
+            const safe = (value, template) =>
+                typeof value === 'string' &&
+                (template
+                    ? /^\/[A-Za-z0-9/_-]+$/.test(value)
+                    : /^\/[A-Za-z0-9/_-]+(\/__SESSION__)$/.test(value))
+                    ? value
+                    : null;
+            return {
+                store: safe(endpoints?.store, true) || fallback.store,
+                show: safe(endpoints?.show, false) || fallback.show,
+                destroy: safe(endpoints?.destroy, false) || fallback.destroy,
+            };
+        },
+
+        sessionUrl(kind, id) {
+            return (this.endpoints[kind] || this.endpoints.show).replace(
+                '__SESSION__',
+                encodeURIComponent(id),
+            );
         },
 
         applyInitialConfig() {
@@ -377,7 +416,7 @@ export function voicePlayground(initialOptions = null) {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
             let data;
             try {
-                const response = await fetch('/workspace/voice-sessions', {
+                const response = await fetch(this.endpoints.store, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -398,7 +437,12 @@ export function voicePlayground(initialOptions = null) {
                     const errData = await response.json().catch(() => ({}));
                     throw {
                         status: response.status,
-                        code: errData.reason || errData.error_code || 'invalid_request',
+                        // VoiceExceptionBoundary answers {code, message}; keep legacy keys as fallbacks.
+                        code:
+                            errData.code ||
+                            errData.reason ||
+                            errData.error_code ||
+                            'invalid_request',
                         message: errData.message,
                     };
                 }
@@ -487,7 +531,7 @@ export function voicePlayground(initialOptions = null) {
             this.pollTimer = setInterval(async () => {
                 if (this.generation !== currentGen || !this.sessionId) return;
                 try {
-                    const res = await fetch(`/workspace/voice-sessions/${this.sessionId}`, {
+                    const res = await fetch(this.sessionUrl('show', this.sessionId), {
                         headers: { Accept: 'application/json' },
                     });
                     if (this.generation !== currentGen) return;
@@ -639,7 +683,7 @@ export function voicePlayground(initialOptions = null) {
         async destroySession(id) {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
             try {
-                await fetch(`/workspace/voice-sessions/${id}`, {
+                await fetch(this.sessionUrl('destroy', id), {
                     method: 'DELETE',
                     headers: {
                         Accept: 'application/json',

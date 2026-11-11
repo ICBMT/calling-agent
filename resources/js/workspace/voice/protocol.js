@@ -28,7 +28,7 @@ const errors = {
     provider_not_ready:
         'Set up and test a native realtime default in Providers, then refresh this playground.',
     unsupported_provider:
-        'Only the OpenAI native realtime worker is connected in this first slice.',
+        'The voice engine supports OpenAI Realtime and Google Gemini Live. Other providers are not connected yet.',
     invalid_selection: 'The model or voice is no longer compatible. Recheck Providers and refresh.',
     session_limit:
         'A session is already open, cleanup is pending, or the workspace limit was reached.',
@@ -41,8 +41,9 @@ const errors = {
     session_ended:
         'This session has ended. Start a new session; old conversations are not replayed.',
     provider_auth:
-        'OpenAI rejected the key or model access. Check project permissions and billing.',
-    provider_quota: 'OpenAI reported a quota or rate limit. Check its usage and billing.',
+        'The realtime provider rejected the key or model access. Check the encrypted key, project permissions and billing in Providers.',
+    provider_quota:
+        'The realtime provider reported a quota or rate limit. Check its usage and billing before starting again.',
     provider_timeout: 'The audio provider timed out. The session was stopped, not replayed.',
     provider_error:
         'The audio provider could not continue. Check Realtime and transcription access.',

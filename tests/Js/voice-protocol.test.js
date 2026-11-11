@@ -201,7 +201,7 @@ describe('Voice Protocol & Packet Validation', () => {
             errorMessage('not_configured'),
             /LiveKit and the voice worker need installation/,
         );
-        assert.match(errorMessage('provider_quota'), /OpenAI reported a quota/);
+        assert.match(errorMessage('provider_quota'), /provider reported a quota/);
         assert.match(errorMessage('session_limit'), /session is already open/);
         assert.match(errorMessage('unknown_code', 401), /sign-in or security token expired/);
         assert.match(errorMessage('unknown_code', 403), /no longer have permission/);
@@ -582,5 +582,68 @@ describe('Voice Playground Alpine Controller Logic', () => {
 
         ctrl.remainingSeconds = 895;
         assert.equal(ctrl.formatCountdown(), '14:55');
+    });
+});
+
+describe('Voice Playground session endpoints (regression: no hardcoded /workspace prefix)', () => {
+    const withEndpoints = {
+        available: true,
+        session_seconds: 600,
+        agents: [{ id: 1, name: 'Assistant', language: 'en' }],
+        choices: {
+            provider_id: 'openai',
+            models: [{ id: 'gpt-realtime', voice_ids: ['alloy'] }],
+            voices: [{ id: 'alloy', name: 'Alloy' }],
+            languages: [{ code: 'en', name: 'English' }],
+            default: { model: 'gpt-realtime', voice: 'alloy', language: 'en' },
+        },
+        endpoints: {
+            store: '/app/voice-sessions',
+            show: '/app/voice-sessions/__SESSION__',
+            destroy: '/app/voice-sessions/__SESSION__',
+        },
+    };
+
+    it('uses the server-provided named routes and substitutes the session id', () => {
+        const ctrl = voicePlayground(withEndpoints);
+        ctrl.init();
+
+        assert.equal(ctrl.endpoints.store, '/app/voice-sessions');
+        const id = '123e4567-e89b-42d3-a456-426614174000';
+        assert.equal(ctrl.sessionUrl('show', id), `/app/voice-sessions/${id}`);
+        assert.equal(ctrl.sessionUrl('destroy', id), `/app/voice-sessions/${id}`);
+    });
+
+    it('never targets the retired /workspace prefix, even with no server endpoints', () => {
+        const ctrl = voicePlayground({ choices: withEndpoints.choices });
+        ctrl.init();
+
+        assert.match(ctrl.endpoints.store, /^\/app\/voice-sessions$/);
+        assert.ok(ctrl.endpoints.show.includes('/app/voice-sessions/__SESSION__'));
+        assert.ok(!ctrl.endpoints.store.startsWith('/workspace'));
+        assert.ok(!ctrl.endpoints.show.startsWith('/workspace'));
+    });
+
+    it('rejects unsafe or malformed endpoint overrides and falls back', () => {
+        const ctrl = voicePlayground({
+            choices: withEndpoints.choices,
+            endpoints: {
+                store: 'https://attacker.example/steal',
+                show: 'javascript:alert(1)',
+                destroy: '/app/voice-sessions', // missing the __SESSION__ template
+            },
+        });
+        ctrl.init();
+
+        assert.equal(ctrl.endpoints.store, '/app/voice-sessions');
+        assert.ok(ctrl.endpoints.show.endsWith('/__SESSION__'));
+        assert.ok(ctrl.endpoints.destroy.endsWith('/__SESSION__'));
+    });
+
+    it('URL-encodes the session id into the route template', () => {
+        const ctrl = voicePlayground(withEndpoints);
+        ctrl.init();
+
+        assert.equal(ctrl.sessionUrl('show', 'a b/c'), '/app/voice-sessions/a%20b%2Fc');
     });
 });

@@ -36,3 +36,4 @@
 /voice-worker/.ruff_cache
 **/__pycache__/
 *.pyc
+/voice-worker/*.egg-info/

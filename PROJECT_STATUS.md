@@ -114,15 +114,15 @@
 
 ## Verification Completed Locally
 
-| Check                             | Verified Result                          | Notes                                           |
-| --------------------------------- | ---------------------------------------- | ----------------------------------------------- |
-| Full PHP backend suite            | **240 tests / 1,802 assertions passing**         | Unit, Feature, Isolation, Console, Telephony, Call Details |
-| Python voice worker suite         | **86 tests passing** (2.60s), Ruff clean | Unit, Security, Grant, Leases, Metrics, Privacy |
-| JavaScript unit suite             | **18 tests passing**                     | Protocol, RTC Stats, Controller Logic           |
-| Diagnostics check (`voca:doctor`) | **PASS** across 12 diagnostic areas      | Verifies CLI table & JSON mode                  |
-| Code style & linting              | **Pint, Prettier, and Ruff passing**     | All files cleanly formatted                     |
-| Production asset build            | **Vite build passing**                   | Code-split LiveKit transport chunk              |
-| SQLite migration cycle            | **Rollback and re-apply verified**       | Clean down/up for all migrations                |
+| Check                             | Verified Result                          | Notes                                                          |
+| --------------------------------- | ---------------------------------------- | -------------------------------------------------------------- |
+| Full PHP backend suite            | **240 tests / 1,802 assertions passing** | Unit, Feature, Isolation, Console, Telephony, Call Details     |
+| Python voice worker suite         | **86 tests passing** (2.60s), Ruff clean | Unit, Security, Grant, Leases, Metrics, Privacy                |
+| JavaScript unit suite             | **24 tests passing**                     | Protocol, RTC Stats, Controller Logic, Session Endpoint Routes |
+| Diagnostics check (`voca:doctor`) | **PASS** across 12 diagnostic areas      | Verifies CLI table & JSON mode                                 |
+| Code style & linting              | **Pint, Prettier, and Ruff passing**     | All files cleanly formatted                                    |
+| Production asset build            | **Vite build passing**                   | Code-split LiveKit transport chunk                             |
+| SQLite migration cycle            | **Rollback and re-apply verified**       | Clean down/up for all migrations                               |
 
 ---
 

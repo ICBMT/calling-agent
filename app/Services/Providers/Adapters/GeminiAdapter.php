@@ -73,7 +73,7 @@ final class GeminiAdapter implements ProviderAdapter
         }
 
         return $normalizer->discovery(array_values($models), array_values($voices), warnings: [
-            'Model-list methods alone do not identify output modalities. Returned IDs are intersected with the dated official capability map; unknown models are not guessed. Live is an upstream provider capability; Voca worker live audio transport is not yet implemented. Dedicated TTS is a separate synthesis API.',
+            'Model-list methods alone do not identify output modalities. Returned IDs are intersected with the dated official capability map; unknown models are not guessed. Live is an upstream provider capability; catalog listing and credential checks do not by themselves prove Live session audio — confirm with a Playground voice session. Dedicated TTS is a separate synthesis API.',
         ]);
     }
 

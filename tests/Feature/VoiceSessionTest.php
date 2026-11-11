@@ -27,6 +27,17 @@ class VoiceSessionTest extends TestCase
         $this->configureVoice();
     }
 
+    public function test_the_playground_page_hands_the_browser_the_real_named_session_routes(): void
+    {
+        $owner = $this->workspaceUser();
+        // Regression guard: the browser must receive route() generated endpoints inside the
+        // workspace /app prefix; a hardcoded /workspace path 404s every start/poll/stop call.
+        $this->actingAs($owner)->get('/app/playground')->assertOk()
+            ->assertSee('\\/app\\/voice-sessions', false)
+            ->assertSee('\\/app\\/voice-sessions\\/__SESSION__', false)
+            ->assertDontSee('\\/workspace\\/voice-sessions', false);
+    }
+
     public function test_missing_infrastructure_never_mints_a_grant_or_creates_a_session(): void
     {
         $owner = $this->workspaceUser();
