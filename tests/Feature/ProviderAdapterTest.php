@@ -295,6 +295,7 @@ class ProviderAdapterTest extends TestCase
             if (str_contains($request->url(), '/models')) {
                 return ($request['pageSize'] ?? null) == 1000;
             }
+
             return true;
         });
     }

@@ -7,7 +7,9 @@ from collections.abc import Callable
 import aiohttp
 from livekit.agents import APIConnectOptions, Agent, AgentSession, llm, room_io
 from livekit.agents.voice import SessionConnectOptions
+from livekit.plugins.google.beta import realtime as google_realtime
 from livekit.plugins.openai import realtime
+from google.genai import types as google_types
 from openai.types.realtime import AudioTranscription
 from openai.types.realtime.realtime_audio_input_turn_detection import ServerVad
 
@@ -16,6 +18,23 @@ from .contracts import LANGUAGES, ContractError, SessionGrant
 
 class ObservedRealtimeModel(realtime.RealtimeModel):
     """Observe the public realtime-session metric event, not deprecated AgentSession metrics."""
+
+    def __init__(
+        self, *, measured: Callable[[object], None], reconnected: Callable[[], None], **kwargs
+    ):
+        super().__init__(**kwargs)
+        self._voca_measured = measured
+        self._voca_reconnected = reconnected
+
+    def session(self, *, turn_detection_disabled: bool = False) -> llm.RealtimeSession:
+        session = super().session(turn_detection_disabled=turn_detection_disabled)
+        session.on("metrics_collected", self._voca_measured)
+        session.on("session_reconnected", lambda _event: self._voca_reconnected())
+        return session
+
+
+class ObservedGeminiRealtimeModel(google_realtime.RealtimeModel):
+    """Observe the public realtime-session metric event for Gemini Live API."""
 
     def __init__(
         self, *, measured: Callable[[object], None], reconnected: Callable[[], None], **kwargs
@@ -62,7 +81,30 @@ def build_session(
     http: aiohttp.ClientSession,
     measured: Callable[[object], None],
     reconnected: Callable[[], None],
-) -> tuple[AgentSession, ObservedRealtimeModel, Agent]:
+) -> tuple[AgentSession, llm.RealtimeModel, Agent]:
+    if grant.configuration.provider == "gemini":
+        if os.environ.get("GEMINI_API_VERSION"):
+            raise ContractError("Unsupported global provider override.")
+        connection = APIConnectOptions(max_retry=0, timeout=12.0)
+        model = ObservedGeminiRealtimeModel(
+            model=grant.configuration.model,
+            voice=grant.configuration.voice,
+            api_key=grant.credentials.api_key.get_secret_value(),
+            modalities=[google_types.Modality.AUDIO],
+            instructions=instructions(grant),
+            conn_options=connection,
+            measured=measured,
+            reconnected=reconnected,
+        )
+        session = AgentSession(
+            llm=model,
+            turn_handling={"turn_detection": "realtime_llm", "interruption": {"enabled": True}},
+            user_away_timeout=None,
+            conn_options=SessionConnectOptions(llm_conn_options=connection, max_unrecoverable_errors=1),
+        )
+        agent = Agent(instructions=instructions(grant), tools=[])
+        return session, model, agent
+
     if os.environ.get("OPENAI_API_VERSION"):
         raise ContractError("Unsupported global provider override.")
     connection = APIConnectOptions(max_retry=0, timeout=12.0)
@@ -108,10 +150,11 @@ def build_session(
 
 
 def room_options(grant: SessionGrant) -> room_io.RoomOptions:
+    sample_rate = 16000 if grant.configuration.provider == "gemini" else 24000
     return room_io.RoomOptions(
         participant_identity=grant.participant_identity,
         audio_input=room_io.AudioInputOptions(
-            sample_rate=24000, num_channels=1, frame_size_ms=20, pre_connect_audio=False
+            sample_rate=sample_rate, num_channels=1, frame_size_ms=20, pre_connect_audio=False
         ),
         audio_output=room_io.AudioOutputOptions(sample_rate=24000, num_channels=1),
         video_input=False,

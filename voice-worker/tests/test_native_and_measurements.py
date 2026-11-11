@@ -42,6 +42,30 @@ def test_real_pinned_sdk_constructs_provider_plugin_without_inference_or_global_
     asyncio.run(exercise())
 
 
+def test_gemini_session_and_room_options_construction(grant_data, dispatch):
+    gemini_data = copy.deepcopy(grant_data)
+    gemini_data["configuration"]["provider"] = "gemini"
+    gemini_data["configuration"]["model"] = "gemini-3.8-live"
+    gemini_data["configuration"]["voice"] = "Kore"
+    gemini_data["configuration"]["transcription_model"] = "gemini-transcribe"
+    grant = SessionGrant.parse(gemini_data, dispatch)
+
+    options = room_options(grant)
+    assert options.audio_input.sample_rate == 16000
+    assert options.audio_output.sample_rate == 24000
+
+    async def exercise():
+        async with aiohttp.ClientSession() as http:
+            session, model, agent = build_session(grant, http, lambda _e: None, lambda: None)
+            assert model._opts.model == "gemini-3.8-live"
+            assert model._opts.voice == "Kore"
+            assert session._opts.turn_handling["turn_detection"] == "realtime_llm"
+            assert "AI assistant" in agent.instructions
+            await model.aclose()
+
+    asyncio.run(exercise())
+
+
 def test_every_session_constructs_new_model_agent_and_context(grant, grant_data, dispatch):
     other = copy.deepcopy(grant_data)
     other["configuration"]["instructions"] = (

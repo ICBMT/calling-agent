@@ -54,7 +54,7 @@ final class VoiceSessions
                     'configuration_revision' => $configuration->revision, 'architecture' => 'native_realtime',
                     'state' => 'provisioning', 'active_user_key' => $organization->id.':'.$actor->id,
                     'room_name' => 'voca-'.$id, 'participant_identity' => 'voca-user-'.$id, 'worker_identity' => 'voca-agent-'.$id,
-                    'configuration_snapshot' => $this->selection->snapshot($agent, $data['model'], $data['voice'], $data['language']),
+                    'configuration_snapshot' => $this->selection->snapshot($agent, $data['model'], $data['voice'], $data['language'], $configuration->provider),
                     'claim_hash' => hash('sha256', $ticket),
                     'claim_expires_at' => now()->addSeconds(min(90, max(30, (int) config('voice.startup_seconds')))),
                     'expires_at' => now()->addSeconds(min(900, max(60, (int) config('voice.session_seconds')))),

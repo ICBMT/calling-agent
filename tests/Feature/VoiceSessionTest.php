@@ -3,10 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\VoiceSession;
+use App\Services\SystemHealth;
 use App\Services\Voice\VoiceInfrastructure;
 use App\Services\Voice\VoiceSessions;
 use App\Services\Voice\WorkerSessions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -293,5 +295,87 @@ class VoiceSessionTest extends TestCase
         };
         $this->actingAs($owner)->postJson('/app/voice-sessions', $this->voiceData($owner))->assertStatus(409)->assertJsonPath('code', 'session_ended')->assertJsonMissingPath('connection');
         $this->assertSame('ended', VoiceSession::query()->first()->state);
+    }
+
+    public function test_gemini_voice_session_creation_and_secure_grant_snapshot(): void
+    {
+        $owner = $this->workspaceUser();
+        $configuration = $this->readyGeminiVoiceProvider($owner);
+        $agent = $owner->currentOrganization->agents()->first() ?? $owner->currentOrganization->agents()->create($this->agentData());
+        $data = [
+            'agent_id' => $agent->id, 'architecture' => 'native_realtime',
+            'model' => 'gemini-3.8-live', 'voice' => 'Kore', 'language' => 'en', 'consent' => true,
+        ];
+        $response = $this->actingAs($owner)->postJson('/app/voice-sessions', $data)->assertCreated();
+        $sessionId = $response->json('session.id');
+        $session = VoiceSession::query()->findOrFail($sessionId);
+
+        $this->assertSame('gemini-3.8-live', $session->configuration_snapshot['model']);
+        $this->assertSame('Kore', $session->configuration_snapshot['voice']);
+        $this->assertSame('gemini', $session->configuration_snapshot['provider']);
+        $this->assertSame('gemini-transcribe', $session->configuration_snapshot['transcription_model']);
+
+        $grant = $this->claimVoice($sessionId);
+        $this->assertSame('gemini', $grant['configuration']['provider']);
+        $this->assertSame('gemini-3.8-live', $grant['configuration']['model']);
+        $this->assertSame('Kore', $grant['configuration']['voice']);
+        $this->assertSame('gemini-transcribe', $grant['configuration']['transcription_model']);
+        $this->assertSame($this->fixtureProviderKey, $grant['credentials']['api_key']);
+    }
+
+    public function test_gemini_unsupported_model_or_voice_is_rejected(): void
+    {
+        $owner = $this->workspaceUser();
+        $this->readyGeminiVoiceProvider($owner);
+        $agent = $owner->currentOrganization->agents()->first() ?? $owner->currentOrganization->agents()->create($this->agentData());
+
+        // Incompatible model
+        $this->actingAs($owner)->postJson('/app/voice-sessions', [
+            'agent_id' => $agent->id, 'architecture' => 'native_realtime',
+            'model' => 'gemini-4-argon', 'voice' => 'Kore', 'language' => 'en', 'consent' => true,
+        ])->assertStatus(409)->assertJsonPath('code', 'invalid_selection');
+
+        // Incompatible voice
+        $this->actingAs($owner)->postJson('/app/voice-sessions', [
+            'agent_id' => $agent->id, 'architecture' => 'native_realtime',
+            'model' => 'gemini-3.8-live', 'voice' => 'marin', 'language' => 'en', 'consent' => true,
+        ])->assertStatus(409)->assertJsonPath('code', 'invalid_selection');
+    }
+
+    public function test_system_health_live_checks_for_livekit_worker_and_queue(): void
+    {
+        $owner = $this->workspaceUser();
+        Cache::put('system:queue_heartbeat', time(), 120);
+
+        $health = app(SystemHealth::class)->checks($owner->currentOrganization);
+        $checks = collect($health)->keyBy('label');
+
+        $this->assertTrue($checks['Queue worker']['ok']);
+        $this->assertSame('Running', $checks['Queue worker']['status']);
+
+        $this->assertTrue($checks['Voice engine']['ok']);
+        $this->assertSame('Connected', $checks['Voice engine']['status']);
+
+        $this->assertTrue($checks['Voice worker']['ok']);
+        $this->assertSame('Registered', $checks['Voice worker']['status']);
+    }
+
+    public function test_system_health_reports_stalled_or_offline_services_honestly(): void
+    {
+        $owner = $this->workspaceUser();
+        Cache::put('system:queue_heartbeat', time() - 100, 120);
+
+        config(['voice.enabled' => false]);
+        $health = app(SystemHealth::class)->checks($owner->currentOrganization);
+        $checks = collect($health)->keyBy('label');
+
+        $this->assertFalse($checks['Queue worker']['ok']);
+        $this->assertSame('Stalled', $checks['Queue worker']['status']);
+
+        $this->assertFalse($checks['Voice engine']['ok']);
+        $this->assertSame('Not configured', $checks['Voice engine']['status']);
+
+        $this->assertFalse($checks['Voice worker']['ok']);
+        $this->assertSame('Not configured', $checks['Voice worker']['status']);
     }
 }

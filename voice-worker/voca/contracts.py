@@ -6,7 +6,15 @@ import time
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, ValidationError, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SecretStr,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 MODELS = frozenset(
     {
@@ -17,8 +25,47 @@ MODELS = frozenset(
         "gpt-realtime",
     }
 )
+GEMINI_MODELS = frozenset(
+    {
+        "gemini-3.8-live",
+    }
+)
 VOICES = frozenset(
     {"alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse", "marin", "cedar"}
+)
+GEMINI_VOICES = frozenset(
+    {
+        "Achernar",
+        "Achird",
+        "Algenib",
+        "Algieba",
+        "Alnilam",
+        "Aoede",
+        "Autonoe",
+        "Callirrhoe",
+        "Charon",
+        "Despina",
+        "Enceladus",
+        "Erinome",
+        "Fenrir",
+        "Gacrux",
+        "Iapetus",
+        "Kore",
+        "Laomedeia",
+        "Leda",
+        "Orus",
+        "Pulcherrima",
+        "Puck",
+        "Rasalgethi",
+        "Sadachbia",
+        "Sadaltager",
+        "Schedar",
+        "Sulafat",
+        "Umbriel",
+        "Vindemiatrix",
+        "Zephyr",
+        "Zubenelgenubi",
+    }
 )
 LANGUAGES = {"en": "English", "ur": "Urdu", "hi": "Hindi"}
 ERROR_CODES = frozenset(
@@ -102,29 +149,33 @@ class Dispatch(Contract):
 
 class NativeConfiguration(Contract):
     v: Literal[1]
-    provider: Literal["openai"]
+    provider: Literal["openai", "gemini"]
     architecture: Literal["native_realtime"]
     model: str
     voice: str
     language: Literal["en", "ur", "hi"]
-    transcription_model: Literal["gpt-transcribe"]
+    transcription_model: Literal["gpt-transcribe", "gemini-transcribe"]
     instructions: str = Field(min_length=20, max_length=12000, repr=False)
     greeting: str = Field(max_length=500, repr=False)
     personality: Literal["friendly", "professional", "empathetic", "concise"]
 
-    @field_validator("model")
-    @classmethod
-    def supported_model(cls, value: str) -> str:
-        if value not in MODELS:
-            raise ValueError("Unimplemented native model.")
-        return value
-
-    @field_validator("voice")
-    @classmethod
-    def supported_voice(cls, value: str) -> str:
-        if value not in VOICES:
-            raise ValueError("Incompatible realtime voice.")
-        return value
+    @model_validator(mode="after")
+    def validate_provider_model_and_voice(self) -> NativeConfiguration:
+        if self.provider == "gemini":
+            if self.model not in GEMINI_MODELS:
+                raise ValueError("Unimplemented Gemini native model.")
+            if self.voice not in GEMINI_VOICES:
+                raise ValueError("Incompatible Gemini realtime voice.")
+            if self.transcription_model != "gemini-transcribe":
+                raise ValueError("Incompatible transcription model for Gemini.")
+        else:
+            if self.model not in MODELS:
+                raise ValueError("Unimplemented native model.")
+            if self.voice not in VOICES:
+                raise ValueError("Incompatible realtime voice.")
+            if self.transcription_model != "gpt-transcribe":
+                raise ValueError("Incompatible transcription model for OpenAI.")
+        return self
 
 
 class Credentials(Contract):

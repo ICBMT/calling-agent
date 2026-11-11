@@ -37,8 +37,20 @@ trait VoiceFixtures
             if ($request->url() === 'https://api.openai.com/v1/models') {
                 return Http::response(['data' => [['id' => 'gpt-realtime-2.1'], ['id' => 'gpt-realtime-2.1-mini'], ['id' => 'gpt-transcribe'], ['id' => 'not-a-supported-model']]]);
             }
+            if (str_contains($request->url(), 'generativelanguage.googleapis.com/v1beta/models')) {
+                return Http::response(['models' => [['name' => 'models/gemini-3.8-live', 'supportedGenerationMethods' => ['bidiGenerateContent']]]]);
+            }
+            if (str_contains($request->url(), 'generativelanguage.googleapis.com/v1beta/voices')) {
+                return Http::response(['voices' => [['id' => 'Kore', 'type' => 'prebuilt', 'display_name' => 'Kore'], ['id' => 'Puck', 'type' => 'prebuilt', 'display_name' => 'Puck']]]);
+            }
             if ($request->url() === 'https://rtc.example.test/twirp/livekit.RoomService/CreateRoom') {
                 return Http::response(['name' => $request['name'], 'sid' => 'RM_test']);
+            }
+            if ($request->url() === 'https://rtc.example.test/twirp/livekit.RoomService/ListRooms') {
+                return Http::response(['rooms' => []]);
+            }
+            if (str_contains($request->url(), ':8081/worker')) {
+                return Http::response(['agent_name' => 'voca-browser-v1', 'worker_type' => 'JT_ROOM', 'active_jobs' => 0]);
             }
             if ($request->url() === 'https://rtc.example.test/twirp/livekit.AgentDispatchService/CreateDispatch') {
                 $this->dispatches[] = json_decode($request['metadata'], true, flags: JSON_THROW_ON_ERROR);
@@ -51,7 +63,7 @@ trait VoiceFixtures
             if ($request->url() === 'https://rtc.example.test/twirp/livekit.RoomService/DeleteRoom') {
                 return $this->failCleanup ? Http::response(['code' => 'unavailable', 'msg' => $this->fixtureProviderKey], 503) : Http::response('{}', 200, ['Content-Type' => 'application/json']);
             }
-            throw new \RuntimeException('Unexpected protocol fixture request.');
+            throw new \RuntimeException('Unexpected protocol fixture request: '.$request->url());
         });
     }
 
@@ -68,6 +80,23 @@ trait VoiceFixtures
         app(ProviderConnectionTester::class)->test($record, $owner, $record->revision);
         $record->refresh();
         $store->selection($record, $owner, ['revision' => $record->revision, 'selected_model' => 'gpt-realtime-2.1', 'selected_voice' => 'marin', 'routing_role' => 'default']);
+
+        return $record->fresh();
+    }
+
+    protected function readyGeminiVoiceProvider(User $owner, bool $platform = false): ProviderConfiguration
+    {
+        if ($platform) {
+            $owner->forceFill(['is_platform_admin' => true])->save();
+        }
+        $store = app(ProviderConfigurationStore::class);
+        $record = $store->create($platform ? null : $owner->currentOrganization, $owner, [
+            'name' => 'Test-only Gemini Realtime', 'provider' => 'gemini', 'capability' => 'realtime',
+            'api_key' => $this->fixtureProviderKey, 'enabled' => true,
+        ])->fresh();
+        app(ProviderConnectionTester::class)->test($record, $owner, $record->revision);
+        $record->refresh();
+        $store->selection($record, $owner, ['revision' => $record->revision, 'selected_model' => 'gemini-3.8-live', 'selected_voice' => 'Kore', 'routing_role' => 'default']);
 
         return $record->fresh();
     }

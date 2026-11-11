@@ -1,3 +1,4 @@
+import copy
 import json
 import pickle
 
@@ -68,10 +69,33 @@ def test_bad_grant_binding_lifetimes_and_schema(dispatch, grant_data, field, val
         SessionGrant.parse(grant_data, dispatch)
 
 
+def test_valid_gemini_grant_accepts_and_validates_models_and_voices(dispatch, grant_data):
+    grant_data["configuration"]["provider"] = "gemini"
+    grant_data["configuration"]["model"] = "gemini-3.8-live"
+    grant_data["configuration"]["voice"] = "Kore"
+    grant_data["configuration"]["transcription_model"] = "gemini-transcribe"
+    grant = SessionGrant.parse(grant_data, dispatch)
+    assert grant.configuration.provider == "gemini"
+    assert grant.configuration.model == "gemini-3.8-live"
+    assert grant.configuration.voice == "Kore"
+
+    # Incompatible voice for Gemini:
+    invalid_voice = copy.deepcopy(grant_data)
+    invalid_voice["configuration"]["voice"] = "marin"
+    with pytest.raises(ContractError):
+        SessionGrant.parse(invalid_voice, dispatch)
+
+    # Incompatible model for Gemini:
+    invalid_model = copy.deepcopy(grant_data)
+    invalid_model["configuration"]["model"] = "gemini-4-argon"
+    with pytest.raises(ContractError):
+        SessionGrant.parse(invalid_model, dispatch)
+
+
 @pytest.mark.parametrize(
     "field,value",
     [
-        ("provider", "gemini"),
+        ("provider", "anthropic"),
         ("architecture", "modular"),
         ("model", "gpt-4o-mini-tts"),
         ("voice", "fable"),

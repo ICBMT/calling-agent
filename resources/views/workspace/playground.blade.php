@@ -79,7 +79,7 @@
                 <section class="workspace-panel voice-config-panel">
                     <div class="panel-heading">
                         <h2>Session configuration</h2>
-                        <span class="status-tag">OpenAI Native Realtime</span>
+                        <span class="status-tag" x-text="options?.choices?.provider ? (options.choices.provider + ' Native Realtime') : 'Native Realtime'">{{ isset($choices['provider']) ? $choices['provider'].' Native Realtime' : 'Native Realtime' }}</span>
                     </div>
 
                     <form @submit.prevent="start()" class="voice-form">

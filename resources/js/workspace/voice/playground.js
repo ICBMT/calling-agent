@@ -148,10 +148,19 @@ export function voicePlayground(initialOptions = null) {
 
         get allowedVoices() {
             const choices = this.options?.choices;
-            if (!choices?.voices) return [];
-            const modelConfig = choices.models?.find((m) => m.id === this.model);
-            if (!modelConfig?.voice_ids) return choices.voices;
-            return choices.voices.filter((v) => modelConfig.voice_ids.includes(v.id));
+            if (choices?.voices && Array.isArray(choices.voices) && choices.voices.length > 0) {
+                const modelConfig = choices.models?.find((m) => m.id === this.model);
+                const voiceIds = modelConfig?.voice_ids || modelConfig?.voices;
+                if (!voiceIds) return choices.voices;
+                return choices.voices.filter((v) => voiceIds.includes(v.id));
+            }
+            const modelConfig = choices?.models?.find((m) => m.id === this.model);
+            if (modelConfig?.voices?.length > 0) {
+                return modelConfig.voices.map((v) =>
+                    typeof v === 'string' ? { id: v, name: v } : v,
+                );
+            }
+            return [];
         },
 
         modelChanged() {

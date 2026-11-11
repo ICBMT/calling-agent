@@ -358,6 +358,49 @@ describe('Voice Playground Alpine Controller Logic', () => {
         assert.equal(ctrl.canStart, false);
     });
 
+    it('initializes Google Gemini choices with prebuilt voices', () => {
+        const geminiOptions = {
+            available: true,
+            session_seconds: 600,
+            agents: [
+                { id: 10, name: 'Gemini Assistant', language: 'en' },
+            ],
+            choices: {
+                provider: 'Google Gemini',
+                provider_id: 'gemini',
+                models: [
+                    {
+                        id: 'gemini-3.8-live',
+                        name: 'Gemini 3.8 Live',
+                        voice_ids: ['Kore', 'Puck', 'Fenrir'],
+                    },
+                ],
+                voices: [
+                    { id: 'Kore', name: 'Kore' },
+                    { id: 'Puck', name: 'Puck' },
+                    { id: 'Fenrir', name: 'Fenrir' },
+                ],
+                languages: [
+                    { code: 'en', name: 'English' },
+                    { code: 'ur', name: 'Urdu' },
+                ],
+                default: {
+                    model: 'gemini-3.8-live',
+                    voice: 'Kore',
+                    language: 'en',
+                },
+            },
+        };
+
+        const ctrl = voicePlayground(geminiOptions);
+        ctrl.init();
+
+        assert.equal(ctrl.model, 'gemini-3.8-live');
+        assert.equal(ctrl.voice, 'Kore');
+        assert.equal(ctrl.allowedVoices.length, 3);
+        assert.equal(ctrl.allowedVoices[0].id, 'Kore');
+    });
+
     it('updates language when agent changes if supported', () => {
         const ctrl = voicePlayground(mockOptions);
         ctrl.init();

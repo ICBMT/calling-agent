@@ -43,6 +43,46 @@ final class LiveKitGateway
         $this->request('RoomService', 'DeleteRoom', ['room' => $session->room_name], ['roomCreate' => true], allowMissing: true);
     }
 
+    /** Safe, read-only health probe against LiveKit Twirp RoomService. Creates no rooms and emits no audio. */
+    public function checkHealth(): array
+    {
+        if (! config('voice.enabled') || ! $this->infrastructure->livekitConfigured()) {
+            return ['ok' => false, 'status' => 'Not configured', 'detail' => 'LiveKit URL or API credentials are not configured.'];
+        }
+        try {
+            $this->request('RoomService', 'ListRooms', ['names' => []], ['roomList' => true]);
+
+            return ['ok' => true, 'status' => 'Connected', 'detail' => 'LiveKit server connected and authenticated.'];
+        } catch (Throwable) {
+            return ['ok' => false, 'status' => 'Unavailable', 'detail' => 'LiveKit server is unreachable or API credentials failed.'];
+        }
+    }
+
+    /** Safe, read-only liveness and LiveKit registration probe against the Python worker HTTP endpoint. */
+    public function checkWorkerHealth(): array
+    {
+        if (! $this->infrastructure->configured()) {
+            return ['ok' => false, 'status' => 'Not configured', 'detail' => 'Voice worker infrastructure is not configured.'];
+        }
+        $url = $this->infrastructure->workerHealthUrl();
+        try {
+            $response = Http::connectTimeout(1)->timeout(2)->withoutRedirecting()->get($url.'/worker');
+            if ($response->successful()) {
+                $data = $response->json();
+                $agentName = is_array($data) ? ($data['agent_name'] ?? config('voice.worker_name')) : config('voice.worker_name');
+
+                return ['ok' => true, 'status' => 'Registered', 'detail' => "Voice worker ({$agentName}) is running and registered with LiveKit."];
+            }
+            if ($response->status() === 503) {
+                return ['ok' => false, 'status' => 'Unregistered', 'detail' => 'Voice worker is running but not yet registered with LiveKit (503).'];
+            }
+
+            return ['ok' => false, 'status' => 'Unavailable', 'detail' => 'Voice worker health endpoint returned unexpected HTTP '.$response->status().'.'];
+        } catch (Throwable) {
+            return ['ok' => false, 'status' => 'Offline', 'detail' => 'Voice worker daemon is not responding on port 8081.'];
+        }
+    }
+
     private function request(string $service, string $method, #[\SensitiveParameter] array $body, array $grants, bool $allowMissing = false): array
     {
         $this->infrastructure->requireLiveKit();

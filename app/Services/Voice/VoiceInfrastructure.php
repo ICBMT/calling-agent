@@ -61,4 +61,11 @@ final class VoiceInfrastructure
 
         return rtrim($url, '/');
     }
+
+    public function workerHealthUrl(): string
+    {
+        $url = config('voice.worker_health_url', 'http://127.0.0.1:8081');
+
+        return rtrim(is_string($url) && $url !== '' ? $url : 'http://127.0.0.1:8081', '/');
+    }
 }
