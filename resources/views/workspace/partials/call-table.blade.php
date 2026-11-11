@@ -13,7 +13,7 @@
         <tbody>
             @foreach ($calls as $call)
                 <tr>
-                    <td><span class="table-call-id">{{ mb_substr($call->public_id, 0, 8) }}</span></td>
+                    <td><a href="{{ route('workspace.calls.show', $call->public_id) }}" class="table-call-id">{{ mb_substr($call->public_id, 0, 8) }}</a></td>
                     <td>{{ $call->agent?->name ?? 'Unassigned' }}</td>
                     <td>{{ ucfirst($call->direction) }}</td>
                     <td><span class="status-tag">{{ ucfirst(str_replace('_', ' ', $call->status)) }}</span>

@@ -23,4 +23,15 @@ class CallController extends Controller
 
         return view('workspace.calls', ['calls' => $query->paginate(20)->withQueryString(), 'filters' => $filters]);
     }
+
+    public function show(Request $request, string $publicId): View
+    {
+        $organization = $request->attributes->get('organization');
+        $call = $organization->calls()
+            ->with(['agent' => fn ($query) => $query->where('organization_id', $organization->id)])
+            ->where('public_id', $publicId)
+            ->firstOrFail();
+
+        return view('workspace.call-details', ['call' => $call]);
+    }
 }

@@ -50,6 +50,43 @@
             </div>
         </section>
     </form>
+
+    <section class="workspace-panel form-panel" style="margin-top: 1.5rem;">
+        <div class="form-section-heading"><span><x-icon name="phone" /></span>
+            <div>
+                <h2>Telephony & Inbound Webhooks</h2>
+                <p>Configure your Twilio, Telnyx, or SIP carrier to forward calls to Voca.</p>
+            </div>
+        </div>
+        <div class="health-list" style="margin-top: 1rem;">
+            <div class="health-row">
+                <span class="health-dot {{ config('telephony.enabled') ? 'is-ok' : '' }}"></span>
+                <span>Telephony Gateway</span>
+                <span class="health-status {{ config('telephony.enabled') ? 'is-ok' : '' }}">
+                    {{ config('telephony.enabled') ? 'Enabled (' . ucfirst(config('telephony.driver')) . ')' : 'Disabled in .env' }}
+                </span>
+            </div>
+            <div class="health-row">
+                <span class="health-dot is-ok"></span>
+                <span>Twilio Inbound URL</span>
+                <span class="health-status"><code>{{ url('/api/telephony/inbound/twilio') }}</code></span>
+            </div>
+            <div class="health-row">
+                <span class="health-dot is-ok"></span>
+                <span>Twilio Status Callback URL</span>
+                <span class="health-status"><code>{{ url('/api/telephony/status/twilio') }}</code></span>
+            </div>
+            <div class="health-row">
+                <span class="health-dot is-ok"></span>
+                <span>Telnyx Inbound Webhook</span>
+                <span class="health-status"><code>{{ url('/api/telephony/inbound/telnyx') }}</code></span>
+            </div>
+        </div>
+        <p class="field-help" style="margin-top: 1rem;">
+            In your carrier dashboard (Twilio/Telnyx), configure your phone number's incoming voice webhook to HTTP POST with the Inbound URL above. Voca will verify signatures, log the call in your workspace, and bridge the call to LiveKit.
+        </p>
+    </section>
+
     <div class="workspace-info-note"><x-icon name="shield" />
         <p><strong>Your workspace is isolated.</strong> Other businesses can’t view your agents or call records.
             Roles are enforced on the server, not just hidden in the menu.</p>

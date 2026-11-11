@@ -42,6 +42,7 @@ Route::middleware(['auth', 'workspace'])->prefix('app')->name('workspace.')->gro
         });
     }
     Route::get('/calls', [CallController::class, 'index'])->name('calls');
+    Route::get('/calls/{call}', [CallController::class, 'show'])->whereUuid('call')->name('calls.show');
     Route::get('/playground', PlaygroundController::class)->name('playground');
     Route::post('/voice-sessions', [VoiceSessionController::class, 'store'])->middleware('throttle:voice-starts')->name('voice-sessions.store');
     Route::get('/voice-sessions/{session}', [VoiceSessionController::class, 'show'])->whereUuid('session')->middleware('throttle:voice-polls')->name('voice-sessions.show');
