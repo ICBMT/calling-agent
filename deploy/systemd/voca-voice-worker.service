@@ -1,0 +1,19 @@
+[Unit]
+Description=Voca AI Calling Agent - Python Voice Worker (LiveKit Agents)
+After=network.target livekit.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/voca/voice-worker
+ExecStart=/var/www/voca/voice-worker/.venv/bin/python agent.py start
+Restart=always
+RestartSec=5s
+TimeoutStopSec=15s
+StandardOutput=journal
+StandardError=journal
+EnvironmentFile=/var/www/voca/voice-worker/.env
+
+[Install]
+WantedBy=multi-user.target

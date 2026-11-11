@@ -1,0 +1,25 @@
+[Unit]
+Description=Voca AI Calling Agent - Web Application (Octane / PHP-FPM)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/voca
+ExecStart=/usr/bin/php /var/www/voca/artisan serve --host=127.0.0.1 --port=8000
+Restart=always
+RestartSec=3s
+TimeoutStopSec=10s
+StandardOutput=journal
+StandardError=journal
+Environment=NODE_ENV=production
+
+# Security sandboxing
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
         then: function (): void {
             Route::prefix('internal/voice')->name('voice.worker.')->middleware(['throttle:voice-worker', AuthenticateVoiceWorker::class])->group(base_path('routes/voice.php'));
+            Route::prefix('api/telephony')->name('telephony.')->group(base_path('routes/telephony.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {

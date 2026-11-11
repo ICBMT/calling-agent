@@ -12,7 +12,7 @@ class CallRecord extends Model
 
     protected $table = 'calls';
 
-    protected $fillable = ['public_id', 'direction', 'status', 'caller_number', 'destination_number', 'started_at', 'ended_at', 'duration_seconds'];
+    protected $fillable = ['public_id', 'organization_id', 'agent_id', 'direction', 'status', 'caller_number', 'destination_number', 'started_at', 'ended_at', 'duration_seconds'];
 
     protected function casts(): array
     {

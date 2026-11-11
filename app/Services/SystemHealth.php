@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Organization;
 use App\Models\ProviderConfiguration;
+use App\Services\Telephony\TelephonyGateway;
 use App\Services\Voice\LiveKitGateway;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -53,6 +54,16 @@ class SystemHealth
             'detail' => $workerHealth['detail'],
         ];
 
+        // 4. Telephony gateway readiness check (Milestone 4)
+        $telephonyGateway = app(TelephonyGateway::class);
+        $telephonyHealth = $telephonyGateway->checkHealth();
+        $telephonyCheck = [
+            'label' => 'Telephony',
+            'status' => $telephonyHealth['status'],
+            'ok' => $telephonyHealth['ok'],
+            'detail' => $telephonyHealth['detail'],
+        ];
+
         $configurations = $organization ? ProviderConfiguration::query()->forScope($organization)->get() : collect();
         $verified = $configurations->filter(fn ($configuration) => $configuration->freshCatalog())->count();
 
@@ -63,7 +74,7 @@ class SystemHealth
             $voiceEngineCheck,
             $voiceWorkerCheck,
             ['label' => 'Provider authentication', 'status' => $verified ? $verified.' recently verified' : ($configurations->isNotEmpty() ? 'Needs check' : 'Not configured'), 'ok' => $verified > 0, 'detail' => $configurations->count().' workspace configurations saved. Only real checks within 24 hours count; this is not audio/voice readiness.'],
-            ['label' => 'Telephony', 'status' => 'Not connected', 'ok' => false, 'detail' => 'A verified telephony adapter and media gateway are a later milestone.'],
+            $telephonyCheck,
         ];
     }
 }

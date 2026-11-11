@@ -15,7 +15,19 @@ This installs a working Laravel **foundation**, not a finished AI calling servic
 
 Redis, Reverb, LiveKit, Docker, and a telephony account are not prerequisites for this milestone.
 
-## Local setup
+## Automated fresh server installation
+
+On a clean Ubuntu 22.04 or 24.04 LTS server:
+
+```sh
+sudo ./bin/install.sh
+```
+
+This automated installer verifies PHP, Composer, Node.js, and Python 3.11+, provisions the Python virtual environment (`voice-worker/.venv`), installs dependencies, runs non-destructive migrations, builds production Vite assets, and runs `php artisan voca:doctor`.
+
+For complete production server deployment instructions including Nginx, SSL, and systemd services, see [DEPLOYMENT.md](DEPLOYMENT.md). For operational troubleshooting, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
+## Local development setup
 
 From the repository root:
 
@@ -177,6 +189,40 @@ The repository includes a GitHub Actions workflow for PHP checks and desktop/mob
 - Include authorized private business files when document/recording storage is introduced.
 - Restore into an isolated environment, apply migrations, and verify account and tenant isolation before switching traffic.
 - No automated backup or restoration workflow is implemented in this milestone.
+
+## Diagnostics and Upgrades
+
+### System Diagnostics (`voca:doctor`)
+
+Run the comprehensive application doctor command at any time:
+
+```sh
+php artisan voca:doctor
+```
+
+It safely checks PHP version and extensions, Composer vendor files, Vite build manifest, Python 3.11+ virtual environment, LiveKit worker dependencies, database connectivity, migration status, encryption key, LiveKit server connectivity, worker registration, and queue health without revealing secrets.
+
+To output structured JSON for automated monitoring or health probes:
+
+```sh
+php artisan voca:doctor --json
+```
+
+### Safe Application Upgrades (`voca:upgrade`)
+
+To safely upgrade an existing Voca installation:
+
+```sh
+php artisan voca:upgrade
+```
+
+Or run the upgrade shell script:
+
+```sh
+sudo ./bin/upgrade.sh
+```
+
+This automatically creates a timestamped database backup in `storage/backups/`, applies migrations non-destructively, refreshes application caches, rebuilds production assets, and verifies health via `voca:doctor`.
 
 ## Troubleshooting
 
