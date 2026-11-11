@@ -1,0 +1,511 @@
+# Voca AI Calling Agent — Full Application Audit, Repair & Completion
+
+You are responsible for bringing the entire Voca AI Calling Agent application to a genuinely working, stable, secure, and production-quality state.
+
+This is NOT a request to fix one reported issue. Perform a comprehensive audit of the entire repository, investigate all application layers, identify every broken, incomplete, disconnected, misleading, or incorrectly implemented feature, and fix everything within the project's intended scope in one coordinated implementation.
+
+Do not stop after fixing the Playground warning. Do not merely write an audit report. You must implement the fixes, run the tests, and verify the resulting application.
+
+## 1. First: Understand the entire application
+
+Inspect the complete repository, architecture, existing documentation, implementation, configuration, database schema, migrations, routes, controllers, services, jobs, events, frontend, provider integrations, Python worker, and tests.
+
+Map the actual end-to-end architecture:
+
+- Laravel application and workspace management.
+- Authentication, authorization, organization isolation, and user roles.
+- Agent creation, configuration, and lifecycle.
+- Provider credential management and verification.
+- Provider model and voice discovery.
+- Provider selection, default routing, and fallback behavior.
+- LiveKit infrastructure and token generation.
+- Queue processing and background jobs.
+- Python LiveKit Agents worker.
+- Browser-based realtime voice sessions.
+- Call lifecycle, session state, events, and failure handling.
+- Usage tracking, session limits, and billing-related safeguards.
+- Logs, diagnostics, health checks, and monitoring.
+- Frontend interfaces and API communication.
+
+Follow important workflows from the browser through Laravel, queues, LiveKit, and the Python worker to the actual provider and back.
+
+Identify where the implementation stops, where components are disconnected, and where the UI claims functionality that does not exist.
+
+## 2. Fix the entire browser voice calling workflow
+
+Make the complete supported browser voice workflow work end to end.
+
+A user should be able to:
+
+1. Configure a supported provider.
+2. Verify provider credentials.
+3. Select a genuinely compatible model and voice.
+4. Assign provider routing correctly.
+5. Create and save an agent.
+6. Open the Playground.
+7. Start a browser voice session.
+8. Connect to the correct LiveKit room.
+9. Communicate with the AI agent using actual realtime audio.
+10. Hear the provider's spoken response.
+11. End the session cleanly.
+12. See accurate session status and relevant diagnostics.
+
+Check every transition and error condition.
+
+A successful provider authentication request must never be confused with a successful inference test or working realtime audio transport.
+
+## 3. Complete provider integrations properly
+
+Audit all advertised providers and their actual implementation.
+
+### OpenAI Realtime
+- Preserve the existing working architecture and defaults.
+- Verify actual realtime connection, audio input/output, model selection, voice selection, session configuration, and error handling.
+- Do not break existing OpenAI functionality while implementing other providers.
+
+### Google Gemini Live
+- Investigate the existing Gemini implementation in Laravel and Python.
+- Complete actual Gemini Live audio transport through the existing LiveKit worker architecture.
+- Verify compatibility with the installed SDK versions and currently supported model capabilities.
+- Verify bidirectional audio, interruption handling, response playback, session lifecycle, and failures.
+- Verify the selected voice is actually supported for the chosen model and API.
+- Do not assume catalog visibility means inference or audio capability.
+
+### Other providers and modular pipeline
+- Audit every advertised provider, media category, and modular pipeline component.
+- Implement features that are within the existing intended scope and can be completed reliably.
+- Where an integration cannot honestly be completed, clearly label it unsupported or unavailable.
+- Never present disconnected UI options as working functionality.
+- Do not invent provider capabilities.
+
+## 4. Audit provider management and routing
+
+Check:
+
+- Credential encryption and secure storage.
+- Organization-scoped credential isolation.
+- Credential replacement and deletion.
+- Read-only authentication/catalog checks.
+- Model capability validation.
+- Voice compatibility.
+- Default and fallback routing.
+- Routing scope and precedence.
+- Provider eligibility and readiness.
+- Stale verification results.
+- Configuration caching and refresh.
+- Error reporting and recovery.
+
+Fix the current Gemini/Playground issue at its actual source.
+
+The Playground must calculate readiness from real infrastructure, provider eligibility, routing, worker capabilities, and actual supported transport.
+
+Do not solve readiness problems by weakening validation or changing a failed status into success.
+
+## 5. Audit LiveKit and the Python worker
+
+Inspect both sides of the integration.
+
+Verify:
+
+- Worker registration and availability.
+- Worker health reporting.
+- Job dispatch and acceptance.
+- Secure communication between Laravel and worker.
+- HMAC claim validation and one-use claims.
+- Room creation and access tokens.
+- Session-to-room mapping.
+- Worker identity.
+- Provider initialization.
+- Audio input and output.
+- Interruptions and cancellation.
+- Disconnections and reconnections.
+- Worker crashes and recovery.
+- Session cleanup.
+- Timeouts and resource limits.
+- Accurate error propagation.
+
+Ensure the Laravel and Python implementations agree on all payloads, contracts, authentication, and lifecycle events.
+
+## 6. Audit the whole Laravel application
+
+Inspect and repair:
+
+- Routes and middleware.
+- Controllers and request validation.
+- Models and relationships.
+- Services and service contracts.
+- Policies and authorization.
+- Organization and workspace isolation.
+- Database schema and migrations.
+- Queue jobs and retries.
+- Events and listeners.
+- API responses.
+- Transactions and consistency.
+- Exception handling.
+- Logging and observability.
+- Configuration and environment validation.
+- Security vulnerabilities.
+- Data integrity.
+- Performance issues.
+
+Check for broken links, incorrect redirects, missing routes, stale frontend state, inaccessible actions, incorrect validation messages, and incomplete CRUD operations.
+
+Ensure that no user can access another organization's agents, credentials, sessions, or other protected data.
+
+## 7. Audit every frontend screen
+
+Inspect the entire application, not just the Playground.
+
+Check:
+
+- Dashboard.
+- Workspace management.
+- Agent management.
+- Agent editor.
+- Provider connections.
+- Provider verification.
+- Model and voice selection.
+- Routing settings.
+- Playground.
+- Session history.
+- Usage and account information.
+- Settings.
+- Navigation.
+- Error, empty, loading, and success states.
+
+Fix broken buttons, dead links, incorrect state, missing feedback, validation issues, inconsistent UI, and misleading feature descriptions.
+
+Every visible action must work or be clearly marked unavailable.
+
+## 8. Security requirements
+
+Preserve and strengthen existing security.
+
+- Never expose API keys or secrets in responses, logs, frontend HTML, or browser requests.
+- Never request credentials from the user through chat.
+- Preserve encrypted credential storage.
+- Preserve organization-level authorization.
+- Preserve secure HMAC worker authentication and replay protection.
+- Validate all external inputs.
+- Protect against cross-organization access.
+- Avoid logging sensitive provider request or response bodies.
+- Preserve safe local-development settings without weakening production security.
+- Never hardcode secrets.
+- Never replace existing credentials with dummy values.
+
+## 9. Testing and real verification
+
+Do not rely only on unit tests.
+
+Run the complete available test suites:
+
+- Laravel/PHPUnit.
+- Python/Pytest.
+- JavaScript/Node tests.
+- Formatting and lint checks.
+- Frontend production build.
+- Relevant integration and feature tests.
+
+Add missing tests for every repaired workflow.
+
+Verify real end-to-end behavior wherever the environment permits.
+
+In particular, distinguish:
+
+1. Configuration validation.
+2. Provider authentication.
+3. Model and voice compatibility.
+4. Inference permission.
+5. Worker registration.
+6. Actual audio transport.
+7. Actual browser voice conversation.
+
+Never claim a higher verification level than was actually tested.
+
+If external API access or credentials prevent a real test, identify that limitation precisely rather than fabricating a successful result.
+
+## 10. Preserve the existing project and environment
+
+This is a repair and completion task, not permission to rebuild the application unnecessarily.
+
+- Preserve the existing Laravel architecture.
+- Preserve the current database and user data.
+- Preserve existing credentials and encryption.
+- Preserve LiveKit configuration.
+- Preserve OpenAI Realtime defaults and working behavior.
+- Preserve existing security controls.
+- Preserve existing functionality that already works.
+- Do not change ports.
+- Do not introduce unnecessary dependencies.
+- Do not replace working components merely for stylistic reasons.
+- Do not remove features or tests to make the build pass.
+- Do not silently change application behavior or contracts.
+
+Current local ports:
+
+- Laravel: 8000
+- LiveKit: 7880
+- LiveKit RTC TCP: 7881
+- Python worker health: 8081
+- LiveKit UDP: 50000–50010
+
+The local environment uses Ubuntu, PHP 8.5, Laravel 13, Node 24, and a separate Python LiveKit Agents worker.
+
+The existing branch is:
+
+arena/f0c6cec5-calling-agent
+
+Work within the current branch.
+
+## 11. Implementation strategy
+
+Work in coordinated phases:
+
+1. Complete repository and architecture audit.
+2. Create a concrete inventory of broken, incomplete, and disconnected features.
+3. Identify root causes and dependencies.
+4. Implement related fixes together, avoiding temporary patches.
+5. Add or update tests alongside each implementation.
+6. Run the full test suites.
+7. Perform end-to-end verification.
+8. Review the final diff for regressions, security problems, and unrelated changes.
+9. Commit the completed work with a meaningful commit message.
+
+Do not stop and ask me to approve every individual repair. Use engineering judgment and complete all safe, in-scope work.
+
+If a feature depends on an external service, account permission, or unavailable credential, implement everything possible and clearly document the exact remaining external requirement.
+
+## 12. Final acceptance criteria
+
+The task is not complete merely because tests pass or the Playground warning disappears.
+
+The application must:
+
+- Start reliably.
+- Have correct and honest readiness reporting.
+- Preserve organization isolation and security.
+- Correctly manage agents and provider connections.
+- Correctly resolve compatible model, voice, and routing settings.
+- Dispatch supported voice sessions to the correct worker.
+- Support actual bidirectional realtime audio for every provider claimed as supported.
+- Handle errors, disconnections, and session cleanup correctly.
+- Have no misleading enabled controls for unimplemented features.
+- Have working frontend actions and navigation.
+- Pass all applicable tests and builds.
+
+## 13. Required final report
+
+After implementation, provide:
+
+1. Every major problem discovered.
+2. Root cause of each important issue.
+3. Every fix implemented.
+4. Features that are now genuinely functional.
+5. Features that remain incomplete and why.
+6. Actual browser voice test results for OpenAI and Gemini separately.
+7. Security changes.
+8. Database or migration changes, if any.
+9. Test commands and exact results.
+10. Build and lint results.
+11. Commit hash.
+12. Any remaining manual setup required on my Ubuntu installation.
+
+Be honest and specific. Do not report planned work as completed work.
+
+**Final instruction:** Audit the whole application and fix the whole application in one coordinated effort. Do not give me another narrow diagnosis, another temporary workaround, or a report that leaves obvious implementation problems untouched. Deliver a thoroughly repaired and tested Voca AI Calling Agent.
+## 14. Production Server Deployment & One-Command Installation
+
+A critical goal is to make Voca AI Calling Agent straightforward to install, configure, update, and maintain on a fresh server.
+
+We have repeatedly encountered installation problems, missing environment variables, incorrect service configuration, dependency issues, worker startup problems, LiveKit connectivity problems, and configuration mismatches.
+
+Do not leave installation dependent on manually discovering and fixing these problems every time.
+
+### A. Create a complete installation system
+
+Provide a reliable, documented installation process for a fresh Ubuntu LTS server.
+
+Where practical, support a simple installation command or guided installer that:
+
+- Checks operating system and required system dependencies.
+- Installs or verifies PHP and required PHP extensions.
+- Installs Composer and Node.js/npm when needed.
+- Installs Python and required Python dependencies.
+- Installs and configures LiveKit.
+- Installs the Laravel application dependencies.
+- Builds frontend assets.
+- Creates required directories and permissions.
+- Configures database connectivity.
+- Runs migrations safely.
+- Configures Laravel queues.
+- Configures the Python LiveKit worker.
+- Creates and enables the required background services.
+- Configures startup after server reboot.
+- Performs health checks after installation.
+
+Avoid unnecessary manual terminal commands.
+
+### B. Centralized setup wizard
+
+Create an installation/setup wizard or equivalent guided configuration process.
+
+It should clearly guide the administrator through:
+
+1. Application URL and domain.
+2. Database configuration.
+3. Application encryption key.
+4. LiveKit URL, API key, and API secret.
+5. Secure worker authentication secret.
+6. AI provider credentials.
+7. Default provider, model, and voice.
+8. Queue and worker configuration.
+9. HTTPS and production security requirements.
+
+Validate each setting immediately and explain failures in understandable language.
+
+Never display stored secrets after saving them.
+
+### C. Environment configuration reliability
+
+Eliminate configuration mismatches between:
+
+- Laravel `.env`.
+- Python worker `.env`.
+- LiveKit configuration.
+- Queue configuration.
+- Provider configuration.
+
+Use a single reliable configuration strategy with explicit validation.
+
+Ensure setup generates or securely provisions required secrets, preserves existing secrets during upgrades, and never silently replaces credentials.
+
+Clearly distinguish development settings from production settings.
+
+Never allow insecure local WebSocket or HTTP settings to become production defaults.
+
+### D. Persistent services and automatic recovery
+
+Provide proper systemd service definitions for:
+
+- Laravel application server or the documented production web stack.
+- Laravel queue worker.
+- Python LiveKit Agents worker.
+- LiveKit server when self-hosted.
+
+Services must:
+
+- Start automatically after reboot.
+- Restart after unexpected failures.
+- Run under appropriate restricted users.
+- Use correct working directories and environment files.
+- Produce useful, privacy-safe logs.
+- Have clear health checks.
+- Shut down gracefully.
+
+Do not rely on keeping several terminal windows open to keep Voca operational.
+
+### E. Production web deployment
+
+Provide a documented, repeatable production deployment using an appropriate web server such as Nginx.
+
+Include:
+
+- Domain configuration.
+- HTTPS certificate setup and renewal.
+- Correct Laravel public document root.
+- Secure environment and storage permissions.
+- Database configuration.
+- Queue processing.
+- WebSocket and LiveKit connectivity.
+- Firewall requirements.
+- Required TCP and UDP ports.
+- Production cache and optimization commands.
+
+Do not expose internal services or administrative endpoints unnecessarily.
+
+### F. Installation diagnostics
+
+Create one comprehensive diagnostic command, for example:
+
+`php artisan voca:doctor`
+
+It should safely check:
+
+- PHP version and extensions.
+- Composer dependencies.
+- Node/frontend build availability.
+- Python version and virtual environment.
+- Python worker dependencies.
+- Database connectivity.
+- Migration status.
+- Laravel configuration.
+- Application encryption key.
+- LiveKit connectivity and authentication.
+- Worker health and registration.
+- Queue health.
+- Provider configuration.
+- Credential verification freshness.
+- Model and voice compatibility.
+- Browser voice readiness.
+- HTTPS and production security configuration.
+
+Report PASS, WARNING, or FAIL for each component.
+
+Explain exactly how to fix each failure.
+
+Never print credentials, tokens, secrets, or sensitive environment values.
+
+### G. Repeatable upgrades and recovery
+
+Create a safe upgrade process that:
+
+- Preserves database contents.
+- Preserves credentials and encryption keys.
+- Backs up the database before migrations.
+- Preserves user uploads and generated files.
+- Updates dependencies safely.
+- Rebuilds frontend assets.
+- Runs migrations.
+- Restarts the correct services.
+- Verifies application health afterward.
+- Provides a recovery or rollback strategy when deployment fails.
+
+A fresh installation and a routine update must be two clearly documented, reliable workflows.
+
+### H. Deployment documentation
+
+Provide:
+
+- A complete fresh Ubuntu server installation guide.
+- A development installation guide.
+- A production deployment guide.
+- An environment variable reference.
+- A service management guide.
+- A troubleshooting guide.
+- A backup and restore guide.
+- An upgrade guide.
+
+Use copy-paste-ready commands and explain which commands run as root and which run as the application user.
+
+### I. Installation acceptance tests
+
+Test the installation process on a clean environment, not just the developer's existing machine.
+
+Verify:
+
+1. Fresh installation succeeds.
+2. Required services start automatically.
+3. Application is accessible through its domain.
+4. Queue worker is running.
+5. Python worker registers with LiveKit.
+6. LiveKit connectivity works.
+7. Provider setup and validation work.
+8. Supported browser voice sessions work.
+9. Rebooting the server does not break the installation.
+10. Updating the application preserves existing data and credentials.
+
+Do not claim clean-server installation has been verified unless it has actually been tested.
+
+**Goal:** A new administrator should be able to install Voca on a fresh Ubuntu server using a clear guided process, configure their provider credentials, and get a properly running application without repeating the troubleshooting we have experienced during local installations.
+
+a server or a local linux or any laptop aswell.
