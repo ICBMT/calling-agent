@@ -19,6 +19,7 @@ function getTransportModule() {
 export function voicePlayground(initialOptions = null) {
     return {
         options: null,
+        provider: '',
         agentId: '',
         model: '',
         voice: '',
@@ -92,6 +93,11 @@ export function voicePlayground(initialOptions = null) {
 
         applyInitialConfig() {
             const choices = this.options.choices;
+            const providers = this.availableProviders;
+            if (providers.length > 0) {
+                this.provider = choices?.provider_id || providers[0].id;
+            }
+            const cfg = this.currentProviderConfig;
             const agents = this.options.agents || [];
             if (agents.length > 0) {
                 this.agentId = String(agents[0].id);
@@ -99,17 +105,17 @@ export function voicePlayground(initialOptions = null) {
                     this.language = agents[0].language;
                 }
             }
-            if (choices?.default) {
-                this.model = choices.default.model || '';
-                this.voice = choices.default.voice || '';
-                if (!this.language && choices.default.language) {
-                    this.language = choices.default.language;
+            if (cfg?.default) {
+                this.model = cfg.default.model || '';
+                this.voice = cfg.default.voice || '';
+                if (!this.language && cfg.default.language) {
+                    this.language = cfg.default.language;
                 }
-            } else if (choices?.models?.length > 0) {
-                this.model = choices.models[0].id;
-                this.voice = choices.models[0].voice_ids?.[0] || choices.voices?.[0]?.id || '';
-                if (!this.language && choices.languages?.length > 0) {
-                    this.language = choices.languages[0].code;
+            } else if (cfg?.models?.length > 0) {
+                this.model = cfg.models[0].id;
+                this.voice = cfg.models[0].voice_ids?.[0] || cfg.voices?.[0]?.id || '';
+                if (!this.language) {
+                    this.language = this.currentLanguages[0]?.code || 'en';
                 }
             }
 
@@ -127,6 +133,62 @@ export function voicePlayground(initialOptions = null) {
                     this.destroySession(this.sessionId);
                 }
             });
+        },
+
+        get availableProviders() {
+            const providers = this.options?.choices?.providers;
+            if (Array.isArray(providers) && providers.length > 0) {
+                return providers;
+            }
+            if (this.options?.choices?.provider_id) {
+                return [
+                    {
+                        id: this.options.choices.provider_id,
+                        name: this.options.choices.provider || this.options.choices.provider_id,
+                        models: this.options.choices.models || [],
+                        voices: this.options.choices.voices || [],
+                        languages: this.options.choices.languages || [],
+                        default: this.options.choices.default,
+                    },
+                ];
+            }
+            return [];
+        },
+
+        get currentProviderConfig() {
+            const providers = this.availableProviders;
+            return (
+                providers.find((p) => p.id === this.provider) ||
+                providers[0] ||
+                this.options?.choices ||
+                null
+            );
+        },
+
+        get currentProviderName() {
+            return (
+                this.currentProviderConfig?.name ||
+                this.currentProviderConfig?.provider ||
+                this.options?.choices?.provider ||
+                'Realtime'
+            );
+        },
+
+        get currentModels() {
+            return this.currentProviderConfig?.models || this.options?.choices?.models || [];
+        },
+
+        get currentLanguages() {
+            const langs = this.currentProviderConfig?.languages || this.options?.choices?.languages;
+            if (Array.isArray(langs)) return langs;
+            if (langs && typeof langs === 'object') {
+                return Object.entries(langs).map(([code, name]) => ({ code, name }));
+            }
+            return [
+                { code: 'en', name: 'English' },
+                { code: 'ur', name: 'Urdu' },
+                { code: 'hi', name: 'Hindi' },
+            ];
         },
 
         get canStart() {
@@ -147,20 +209,41 @@ export function voicePlayground(initialOptions = null) {
         },
 
         get allowedVoices() {
-            const choices = this.options?.choices;
-            if (choices?.voices && Array.isArray(choices.voices) && choices.voices.length > 0) {
-                const modelConfig = choices.models?.find((m) => m.id === this.model);
+            const cfg = this.currentProviderConfig || this.options?.choices;
+            if (cfg?.voices && Array.isArray(cfg.voices) && cfg.voices.length > 0) {
+                const modelConfig = cfg.models?.find((m) => m.id === this.model);
                 const voiceIds = modelConfig?.voice_ids || modelConfig?.voices;
-                if (!voiceIds) return choices.voices;
-                return choices.voices.filter((v) => voiceIds.includes(v.id));
+                if (!voiceIds) return cfg.voices;
+                return cfg.voices.filter((v) => voiceIds.includes(v.id));
             }
-            const modelConfig = choices?.models?.find((m) => m.id === this.model);
+            const modelConfig = cfg?.models?.find((m) => m.id === this.model);
             if (modelConfig?.voices?.length > 0) {
                 return modelConfig.voices.map((v) =>
                     typeof v === 'string' ? { id: v, name: v } : v,
                 );
             }
             return [];
+        },
+
+        get otherProviders() {
+            return this.options?.choices?.other_providers || [];
+        },
+
+        providerChanged() {
+            const cfg = this.currentProviderConfig;
+            if (!cfg) return;
+            if (cfg.default?.model) {
+                this.model = cfg.default.model;
+                this.voice = cfg.default.voice || '';
+            } else if (cfg.models?.length > 0) {
+                this.model = cfg.models[0].id;
+                const allowed = this.allowedVoices;
+                this.voice = allowed[0]?.id || '';
+            }
+            const supportedLangs = this.currentLanguages;
+            if (!supportedLangs.some((l) => l.code === this.language)) {
+                this.language = supportedLangs[0]?.code || 'en';
+            }
         },
 
         modelChanged() {
@@ -173,9 +256,7 @@ export function voicePlayground(initialOptions = null) {
         agentChanged() {
             const agent = this.options?.agents?.find((a) => String(a.id) === String(this.agentId));
             if (agent?.language) {
-                const supported = this.options?.choices?.languages?.some(
-                    (l) => l.code === agent.language,
-                );
+                const supported = this.currentLanguages.some((l) => l.code === agent.language);
                 if (supported) {
                     this.language = agent.language;
                 }
@@ -306,6 +387,7 @@ export function voicePlayground(initialOptions = null) {
                     body: JSON.stringify({
                         agent_id: Number(this.agentId),
                         architecture: 'native_realtime',
+                        provider: this.provider || undefined,
                         model: this.model,
                         voice: this.voice,
                         language: this.language,

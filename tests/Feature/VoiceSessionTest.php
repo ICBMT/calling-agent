@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\VoiceSession;
 use App\Services\SystemHealth;
 use App\Services\Voice\VoiceInfrastructure;
+use App\Services\Voice\VoiceSelection;
 use App\Services\Voice\VoiceSessions;
 use App\Services\Voice\WorkerSessions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -377,5 +378,68 @@ class VoiceSessionTest extends TestCase
 
         $this->assertFalse($checks['Voice worker']['ok']);
         $this->assertSame('Not configured', $checks['Voice worker']['status']);
+    }
+
+    public function test_voice_selection_choices_includes_all_available_realtime_providers(): void
+    {
+        $owner = $this->workspaceUser();
+        $this->readyVoiceProvider($owner);
+        $this->readyGeminiVoiceProvider($owner);
+
+        $choices = app(VoiceSelection::class)->choices($owner->currentOrganization, $owner);
+
+        $this->assertIsArray($choices['providers']);
+        $this->assertCount(2, $choices['providers']);
+
+        $providersById = collect($choices['providers'])->keyBy('id');
+        $this->assertTrue($providersById->has('openai'));
+        $this->assertTrue($providersById->has('gemini'));
+
+        $this->assertSame('OpenAI', $providersById['openai']['name']);
+        $this->assertSame('Google Gemini', $providersById['gemini']['name']);
+        $this->assertSame('gemini-3.8-live', $providersById['gemini']['default']['model']);
+    }
+
+    public function test_voice_session_store_can_explicitly_target_openai_or_gemini_provider(): void
+    {
+        $owner = $this->workspaceUser();
+        $this->readyVoiceProvider($owner);
+        $this->readyGeminiVoiceProvider($owner);
+        $agent = $owner->currentOrganization->agents()->first() ?? $owner->currentOrganization->agents()->create($this->agentData());
+
+        // Start Gemini session
+        $resGemini = $this->actingAs($owner)->postJson('/app/voice-sessions', [
+            'agent_id' => $agent->id, 'architecture' => 'native_realtime', 'provider' => 'gemini',
+            'model' => 'gemini-3.8-live', 'voice' => 'Kore', 'language' => 'en', 'consent' => true,
+        ])->assertCreated();
+
+        $sessionGemini = VoiceSession::query()->findOrFail($resGemini->json('session.id'));
+        $this->assertSame('gemini', $sessionGemini->configuration_snapshot['provider']);
+        $this->assertSame('gemini-3.8-live', $sessionGemini->configuration_snapshot['model']);
+
+        // End Gemini session so we can start an OpenAI session
+        $sessionGemini->forceFill(['ended_at' => now(), 'state' => 'ended', 'active_user_key' => null])->save();
+
+        // Start OpenAI session
+        $resOpenAi = $this->actingAs($owner)->postJson('/app/voice-sessions', [
+            'agent_id' => $agent->id, 'architecture' => 'native_realtime', 'provider' => 'openai',
+            'model' => 'gpt-realtime-2.1-mini', 'voice' => 'marin', 'language' => 'en', 'consent' => true,
+        ])->assertCreated();
+
+        $sessionOpenAi = VoiceSession::query()->findOrFail($resOpenAi->json('session.id'));
+        $this->assertSame('openai', $sessionOpenAi->configuration_snapshot['provider']);
+        $this->assertSame('gpt-realtime-2.1-mini', $sessionOpenAi->configuration_snapshot['model']);
+    }
+
+    public function test_voice_session_store_rejects_unsupported_provider_explicit_parameter(): void
+    {
+        $owner = $this->workspaceUser();
+        $this->readyVoiceProvider($owner);
+        $agent = $owner->currentOrganization->agents()->first() ?? $owner->currentOrganization->agents()->create($this->agentData());
+
+        $this->actingAs($owner)->postJson('/app/voice-sessions', [
+            'agent_id' => $agent->id, 'architecture' => 'native_realtime', 'provider' => 'deepgram',
+            'model' => 'gpt-realtime-2.1-mini', 'voice' => 'marin', 'language' => 'en', 'consent' => true,
+        ])->assertStatus(422);
     }
 }

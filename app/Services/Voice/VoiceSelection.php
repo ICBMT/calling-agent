@@ -19,11 +19,11 @@ final class VoiceSelection
     public function __construct(private readonly ProviderManager $providers) {}
 
     /** All media choices come from the same authorized M2 routing decision. Never browser IDs. */
-    public function resolve(Organization $organization, User $actor): ResolvedProvider
+    public function resolve(Organization $organization, User $actor, ?string $provider = null): ResolvedProvider
     {
         Gate::forUser($actor)->authorize('manage', $organization);
         try {
-            $resolved = $this->providers->resolveNativeRealtime($organization, $actor);
+            $resolved = $this->providers->resolveNativeRealtime($organization, $actor, $provider);
         } catch (ProviderUnavailable) {
             throw new VoiceFailure('provider_not_ready');
         }
@@ -41,10 +41,57 @@ final class VoiceSelection
         return $resolved;
     }
 
-    public function choices(Organization $organization, User $actor): array
+    public function choices(Organization $organization, User $actor, ?string $preferredProvider = null): array
     {
-        $resolved = $this->resolve($organization, $actor);
-        $configuration = ProviderConfiguration::query()->findOrFail($resolved->configurationId);
+        $supportedProviders = config('voice.native.providers', [config('voice.native.provider')]);
+        $providersChoices = [];
+        $activeResolved = null;
+
+        foreach ($supportedProviders as $providerKey) {
+            try {
+                $resolved = $this->resolve($organization, $actor, $providerKey);
+                $configuration = ProviderConfiguration::query()->findOrFail($resolved->configurationId);
+                $choice = $this->buildChoiceForProvider($resolved, $configuration);
+                $providersChoices[$providerKey] = $choice;
+                if ($preferredProvider === $providerKey) {
+                    $activeResolved = $resolved;
+                }
+            } catch (VoiceFailure) {
+                // Not configured or not ready for this provider
+            }
+        }
+
+        if (! $activeResolved) {
+            $activeResolved = $this->resolve($organization, $actor);
+        }
+
+        $activeConfiguration = ProviderConfiguration::query()->findOrFail($activeResolved->configurationId);
+        $activeChoice = $providersChoices[$activeResolved->provider] ?? $this->buildChoiceForProvider($activeResolved, $activeConfiguration);
+
+        $activeChoice['providers'] = array_values($providersChoices);
+        $activeChoice['scope'] = $activeConfiguration->scope === 'platform' ? 'Shared platform default' : 'Workspace default / explicit fallback';
+
+        $definitions = config('providers.definitions', []);
+        $otherConfigs = ProviderConfiguration::query()
+            ->forScope($organization)
+            ->where('enabled', true)
+            ->whereNotIn('provider', $supportedProviders)
+            ->get();
+
+        $activeChoice['other_providers'] = $otherConfigs->map(function ($cfg) use ($definitions) {
+            return [
+                'id' => $cfg->provider,
+                'name' => $definitions[$cfg->provider]['name'] ?? ucfirst($cfg->provider),
+                'capabilities' => $definitions[$cfg->provider]['capabilities'] ?? [],
+                'summary' => $definitions[$cfg->provider]['summary'] ?? '',
+            ];
+        })->values()->all();
+
+        return $activeChoice;
+    }
+
+    private function buildChoiceForProvider(ResolvedProvider $resolved, ProviderConfiguration $configuration): array
+    {
         $catalog = $configuration->catalog;
         $providerModels = $resolved->provider === 'openai'
             ? config('voice.native.models')
@@ -88,6 +135,8 @@ final class VoiceSelection
         };
 
         return [
+            'id' => $resolved->provider,
+            'name' => $providerName,
             'provider' => $providerName,
             'provider_id' => $resolved->provider,
             'architecture' => 'native_realtime',
@@ -102,7 +151,6 @@ final class VoiceSelection
             ],
             'languages' => $languages,
             'transcription_model' => $transcriptionModel,
-            'scope' => $configuration->scope === 'platform' ? 'Shared platform default' : 'Workspace default / explicit fallback',
         ];
     }
 
@@ -136,15 +184,15 @@ final class VoiceSelection
         if (! $actor || ! $organization || ! $agent || ! $actor->hasOrganizationRole($organization, ['owner', 'admin'])) {
             throw new VoiceFailure('access_revoked');
         }
-        $resolved = $this->resolve($organization, $actor);
+        $snapshot = $session->configuration_snapshot;
+        if (! is_array($snapshot)) {
+            throw new VoiceFailure('access_revoked');
+        }
+        $resolved = $this->resolve($organization, $actor, $snapshot['provider'] ?? null);
         $configuration = ProviderConfiguration::query()->find($resolved->configurationId);
         if (! $configuration || $resolved->configurationId !== $session->provider_configuration_id
             || $configuration->credential_version !== $session->credential_version
             || $configuration->revision !== $session->configuration_revision) {
-            throw new VoiceFailure('access_revoked');
-        }
-        $snapshot = $session->configuration_snapshot;
-        if (! is_array($snapshot)) {
             throw new VoiceFailure('access_revoked');
         }
         $this->validateChoice($configuration, $snapshot['model'], $snapshot['voice'], $snapshot['language']);

@@ -401,6 +401,93 @@ describe('Voice Playground Alpine Controller Logic', () => {
         assert.equal(ctrl.allowedVoices[0].id, 'Kore');
     });
 
+    it('supports switching between multiple configured providers in the playground', () => {
+        const multiProviderOptions = {
+            available: true,
+            session_seconds: 600,
+            agents: [{ id: 1, name: 'Assistant', language: 'en' }],
+            choices: {
+                provider: 'OpenAI',
+                provider_id: 'openai',
+                models: [
+                    {
+                        id: 'gpt-realtime-2.1-mini',
+                        name: 'GPT Realtime 2.1 Mini',
+                        voice_ids: ['marin', 'alloy'],
+                    },
+                ],
+                voices: [
+                    { id: 'marin', name: 'Marin' },
+                    { id: 'alloy', name: 'Alloy' },
+                ],
+                languages: [{ code: 'en', name: 'English' }],
+                default: { model: 'gpt-realtime-2.1-mini', voice: 'marin', language: 'en' },
+                providers: [
+                    {
+                        id: 'openai',
+                        name: 'OpenAI',
+                        models: [
+                            {
+                                id: 'gpt-realtime-2.1-mini',
+                                name: 'GPT Realtime 2.1 Mini',
+                                voice_ids: ['marin', 'alloy'],
+                            },
+                        ],
+                        voices: [
+                            { id: 'marin', name: 'Marin' },
+                            { id: 'alloy', name: 'Alloy' },
+                        ],
+                        languages: [{ code: 'en', name: 'English' }],
+                        default: { model: 'gpt-realtime-2.1-mini', voice: 'marin', language: 'en' },
+                    },
+                    {
+                        id: 'gemini',
+                        name: 'Google Gemini',
+                        models: [
+                            {
+                                id: 'gemini-3.8-live',
+                                name: 'Gemini 3.8 Live',
+                                voice_ids: ['Kore', 'Puck'],
+                            },
+                        ],
+                        voices: [
+                            { id: 'Kore', name: 'Kore' },
+                            { id: 'Puck', name: 'Puck' },
+                        ],
+                        languages: [
+                            { code: 'en', name: 'English' },
+                            { code: 'ur', name: 'Urdu' },
+                        ],
+                        default: { model: 'gemini-3.8-live', voice: 'Kore', language: 'en' },
+                    },
+                ],
+                other_providers: [
+                    { id: 'deepgram', name: 'Deepgram', summary: 'Transcription and Aura TTS' },
+                ],
+            },
+        };
+
+        const ctrl = voicePlayground(multiProviderOptions);
+        ctrl.init();
+
+        assert.equal(ctrl.provider, 'openai');
+        assert.equal(ctrl.currentProviderName, 'OpenAI');
+        assert.equal(ctrl.model, 'gpt-realtime-2.1-mini');
+        assert.equal(ctrl.voice, 'marin');
+        assert.equal(ctrl.availableProviders.length, 2);
+        assert.equal(ctrl.otherProviders.length, 1);
+
+        // Switch to Gemini
+        ctrl.provider = 'gemini';
+        ctrl.providerChanged();
+
+        assert.equal(ctrl.currentProviderName, 'Google Gemini');
+        assert.equal(ctrl.model, 'gemini-3.8-live');
+        assert.equal(ctrl.voice, 'Kore');
+        assert.equal(ctrl.allowedVoices.length, 2);
+        assert.equal(ctrl.allowedVoices[0].id, 'Kore');
+    });
+
     it('updates language when agent changes if supported', () => {
         const ctrl = voicePlayground(mockOptions);
         ctrl.init();

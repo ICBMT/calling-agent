@@ -17,6 +17,7 @@ class StartVoiceSessionRequest extends FormRequest
         return [
             'agent_id' => ['required', 'integer', 'min:1'],
             'architecture' => ['required', Rule::in(['native_realtime'])],
+            'provider' => ['nullable', 'string', Rule::in(config('voice.native.providers', ['openai', 'gemini']))],
             'model' => ['required', 'string', 'max:200'],
             'voice' => ['required', 'string', 'max:200'],
             'language' => ['required', Rule::in(array_keys(config('voice.native.languages')))],

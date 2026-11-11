@@ -14,10 +14,23 @@ final class ProviderManager
 {
     public function __construct(private readonly ProviderRegistry $registry) {}
 
-    public function resolve(Organization $organization, Capability $capability, User $actor): ResolvedProvider
+    public function resolve(Organization $organization, Capability $capability, User $actor, ?string $provider = null): ResolvedProvider
     {
         // Authorize before even querying routing or decrypting shared/local credentials.
         Gate::forUser($actor)->authorize('view', $organization);
+
+        if ($provider !== null) {
+            $local = ProviderConfiguration::query()->forScope($organization)->where('capability', $capability->value)->where('provider', $provider)->first();
+            if ($resolved = $this->resolveConfiguration($local, $capability)) {
+                return $resolved;
+            }
+            $platform = ProviderConfiguration::query()->forScope(null)->where('capability', $capability->value)->where('provider', $provider)->first();
+            if ($resolved = $this->resolveConfiguration($platform, $capability)) {
+                return $resolved;
+            }
+            throw new ProviderUnavailable("No enabled, freshly verified configuration is available for {$provider} {$capability->label()}.");
+        }
+
         $primary = ProviderConfiguration::query()->forScope($organization)->where('capability', $capability->value)->where('routing_role', 'default')->first();
         // A local default explicitly overrides platform routing, even if it later fails.
         $scope = $primary ? $organization : null;
@@ -32,9 +45,9 @@ final class ProviderManager
         throw new ProviderUnavailable('No enabled, freshly verified default or compatible explicit fallback is configured for '.$capability->label().'.');
     }
 
-    public function resolveNativeRealtime(Organization $organization, User $actor): ResolvedProvider
+    public function resolveNativeRealtime(Organization $organization, User $actor, ?string $provider = null): ResolvedProvider
     {
-        return $this->resolve($organization, Capability::Realtime, $actor);
+        return $this->resolve($organization, Capability::Realtime, $actor, $provider);
     }
 
     /** Native realtime is deliberately NOT represented as this pipeline. */

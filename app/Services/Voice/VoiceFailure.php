@@ -14,7 +14,7 @@ final class VoiceFailure extends \RuntimeException
         return match ($reason) {
             'not_configured' => 'Browser voice needs configured LiveKit infrastructure and the separate worker. Ask the installation operator to complete setup.',
             'provider_not_ready' => 'Configure, test and select a native realtime default in Providers. Catalog checks must be current; inference permissions and billing are also required.',
-            'unsupported_provider' => 'This first browser voice slice supports OpenAI Realtime only. Other media providers and the modular pipeline are not connected yet.',
+            'unsupported_provider' => 'The voice engine supports OpenAI Realtime and Google Gemini Live. Other media providers and the modular pipeline are not connected yet.',
             'invalid_selection' => 'Choose a currently discovered, supported realtime model, voice and language. Recheck the provider catalog if the saved choice has disappeared.',
             'session_limit' => 'A browser session is already open for you, or the workspace concurrency limit has been reached. End it before starting another.',
             'livekit_unavailable' => 'LiveKit did not confirm the operation. Check its URL, credentials, network and worker deployment; no connection success is assumed.',

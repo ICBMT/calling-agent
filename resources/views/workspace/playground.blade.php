@@ -79,10 +79,20 @@
                 <section class="workspace-panel voice-config-panel">
                     <div class="panel-heading">
                         <h2>Session configuration</h2>
-                        <span class="status-tag" x-text="options?.choices?.provider ? (options.choices.provider + ' Native Realtime') : 'Native Realtime'">{{ isset($choices['provider']) ? $choices['provider'].' Native Realtime' : 'Native Realtime' }}</span>
+                        <span class="status-tag" x-text="currentProviderName ? (currentProviderName + ' Native Realtime') : (options?.choices?.provider ? (options.choices.provider + ' Native Realtime') : 'Native Realtime')">{{ isset($choices['provider']) ? $choices['provider'].' Native Realtime' : 'Native Realtime' }}</span>
                     </div>
 
                     <form @submit.prevent="start()" class="voice-form">
+                        <div class="field" x-show="availableProviders.length > 1">
+                            <label for="voice-provider-select">Realtime voice provider</label>
+                            <select id="voice-provider-select" x-model="provider" @change="providerChanged()" :disabled="isLive">
+                                <template x-for="p in availableProviders" :key="p.id">
+                                    <option :value="p.id" x-text="p.name"></option>
+                                </template>
+                            </select>
+                            <small class="field-hint">Choose between verified native realtime speech-to-speech providers.</small>
+                        </div>
+
                         <div class="field">
                             <label for="voice-agent-select">Draft agent instructions</label>
                             <select id="voice-agent-select" x-model="agentId" @change="agentChanged()" :disabled="isLive">
@@ -99,7 +109,7 @@
                             <div class="field">
                                 <label for="voice-model-select">Realtime model</label>
                                 <select id="voice-model-select" x-model="model" @change="modelChanged()" :disabled="isLive">
-                                    <template x-for="item in (options?.choices?.models || [])" :key="item.id">
+                                    <template x-for="item in currentModels" :key="item.id">
                                         <option :value="item.id" x-text="item.name || item.id"></option>
                                     </template>
                                 </select>
@@ -118,7 +128,7 @@
                         <div class="field">
                             <label for="voice-language-select">Spoken language</label>
                             <select id="voice-language-select" x-model="language" :disabled="isLive">
-                                <template x-for="item in (options?.choices?.languages || [])" :key="item.code">
+                                <template x-for="item in currentLanguages" :key="item.code">
                                     <option :value="item.code" x-text="item.name"></option>
                                 </template>
                             </select>
@@ -128,9 +138,27 @@
                         <div class="voice-consent-box">
                             <label class="voice-checkbox-label">
                                 <input type="checkbox" id="voice-consent" x-model="consent" :disabled="isLive" required>
-                                <span>I consent to streaming microphone audio directly to OpenAI Realtime for this live test. Audio and ephemeral transcripts are not recorded or persisted to disk.</span>
+                                <span>I consent to streaming microphone audio directly to <strong x-text="currentProviderName || 'the realtime provider'">OpenAI Realtime</strong> for this live test. Audio and ephemeral transcripts are not recorded or persisted to disk.</span>
                             </label>
                         </div>
+
+                        <template x-if="otherProviders.length > 0">
+                            <div class="voice-modular-notice" style="margin-top: 1rem; padding: 0.75rem; border-radius: var(--radius-sm, 6px); background: var(--color-surface-subtle, rgba(255,255,255,0.03)); border: 1px solid var(--color-border, rgba(255,255,255,0.08));">
+                                <small class="field-hint" style="display: flex; gap: 0.5rem; align-items: flex-start; margin: 0;">
+                                    <x-icon name="info" style="flex-shrink: 0; margin-top: 2px;" />
+                                    <span>
+                                        Other configured workspace providers (
+                                        <template x-for="(op, idx) in otherProviders" :key="op.id">
+                                            <span>
+                                                <strong x-text="op.name"></strong>
+                                                <span x-show="idx < otherProviders.length - 1">, </span>
+                                            </span>
+                                        </template>
+                                        ) are specialized for modular STT/TTS pipelines and do not support native realtime S2S.
+                                    </span>
+                                </small>
+                            </div>
+                        </template>
 
                         <div class="voice-action-row" x-show="!isLive">
                             <button type="submit" class="button button--lime button--full" :disabled="!canStart">

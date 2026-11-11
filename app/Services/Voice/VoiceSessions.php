@@ -27,7 +27,7 @@ final class VoiceSessions
     {
         Gate::forUser($actor)->authorize('manage', $organization);
         $this->infrastructure->requireConfigured();
-        if (array_diff(array_keys($data), ['agent_id', 'architecture', 'model', 'voice', 'language', 'consent'])
+        if (array_diff(array_keys($data), ['agent_id', 'architecture', 'provider', 'model', 'voice', 'language', 'consent'])
             || ($data['architecture'] ?? null) !== 'native_realtime' || ($data['consent'] ?? null) !== true) {
             throw new VoiceFailure('invalid_request', 422);
         }
@@ -38,7 +38,7 @@ final class VoiceSessions
                 Organization::query()->whereKey($organization->id)->lockForUpdate()->firstOrFail();
                 Gate::forUser($actor)->authorize('manage', $organization);
                 $agent = $organization->agents()->findOrFail($data['agent_id'] ?? null);
-                $resolved = $this->selection->resolve($organization, $actor);
+                $resolved = $this->selection->resolve($organization, $actor, $data['provider'] ?? null);
                 $configuration = ProviderConfiguration::query()->findOrFail($resolved->configurationId);
                 $this->selection->validateChoice($configuration, $data['model'] ?? '', $data['voice'] ?? '', $data['language'] ?? '');
                 $active = VoiceSession::query()->forOrganization($organization)->whereNotNull('active_user_key');
