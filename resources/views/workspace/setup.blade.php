@@ -83,9 +83,6 @@
         </div>
     </section>
     <div class="workspace-info-note"><x-icon name="info" />
-        <p><strong>Not a production calling release yet.</strong> Provider configuration and real read-only authentication
-            checks are available. There is no live AI audio, SIP, or
-            telephone connection. Queue heartbeats, Redis, Reverb, knowledge retrieval, campaigns, and billing
-            will be introduced with their verified modules.</p>
+        <p><strong>Real-time Voice & Telephony Media Gateway Foundation.</strong> Real-time browser calling is connected to LiveKit and the Python voice worker. Inbound telephony webhooks and call records are supported for Twilio, Telnyx, and SIP. Connecting live telephone calls requires external carrier credentials and LiveKit SIP server routing.</p>
     </div>
 @endsection
