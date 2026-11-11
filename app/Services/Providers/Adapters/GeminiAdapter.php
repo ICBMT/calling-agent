@@ -28,13 +28,20 @@ final class GeminiAdapter implements ProviderAdapter
             if (! $id) {
                 continue;
             }
+            if ($capability === Capability::Realtime) {
+                $methods = is_array($entry['supportedGenerationMethods'] ?? null) ? $entry['supportedGenerationMethods'] : null;
+                if ($methods !== null && ! in_array('bidiGenerateContent', $methods, true)) {
+                    continue;
+                }
+            }
             $model = $normalizer->documented('gemini', $id, $normalizer->text($entry['displayName'] ?? null, $id), $capability);
             if ($model) {
                 $models[$id] = $model;
             }
         }
         if ($capability->needsVoice()) {
-            foreach ($this->pages('/v1beta/voices', 'voices', $credentials, $deadline) as $voice) {
+            $extra = $capability === Capability::Realtime ? ['type' => 'prebuilt'] : [];
+            foreach ($this->pages('/v1beta/voices', 'voices', $credentials, $deadline, $extra) as $voice) {
                 $id = $normalizer->id($voice['id'] ?? null);
                 $type = $voice['type'] ?? null;
                 if (! $id || ! in_array($type, ['prebuilt', 'prompted', 'replicated'], true) || ($capability === Capability::Realtime && $type !== 'prebuilt')) {
@@ -66,17 +73,17 @@ final class GeminiAdapter implements ProviderAdapter
         }
 
         return $normalizer->discovery(array_values($models), array_values($voices), warnings: [
-            'Model-list methods alone do not identify output modalities. Returned IDs are intersected with the dated official capability map; unknown models are not guessed. Live is not a dedicated TTS endpoint.',
+            'Model-list methods alone do not identify output modalities. Returned IDs are intersected with the dated official capability map; unknown models are not guessed. Live is an upstream provider capability; Voca worker live audio transport is not yet implemented. Dedicated TTS is a separate synthesis API.',
         ]);
     }
 
-    private function pages(string $path, string $key, #[\SensitiveParameter] ProviderCredentials $credentials, float $deadline): array
+    private function pages(string $path, string $key, #[\SensitiveParameter] ProviderCredentials $credentials, float $deadline, array $extra = []): array
     {
         $items = $seen = [];
         $token = null;
         $snake = $key === 'voices';
         for ($page = 0; $page < config('providers.max_pages'); $page++) {
-            $query = [$snake ? 'page_size' : 'pageSize' => 200];
+            $query = array_merge($extra, [$snake ? 'page_size' : 'pageSize' => 1000]);
             if ($token) {
                 $query[$snake ? 'page_token' : 'pageToken'] = $token;
             }

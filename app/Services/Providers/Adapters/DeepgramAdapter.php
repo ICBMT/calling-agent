@@ -20,12 +20,15 @@ final class DeepgramAdapter implements ProviderAdapter
             throw new ProviderFailure('unexpected_response');
         }
         $deadline = microtime(true) + config('providers.test_budget_seconds');
-        $path = '/v1/projects/'.$credentials->projectId;
-        $project = $this->http->get('deepgram', $path, $credentials, deadline: $deadline);
-        if (($project['project_id'] ?? null) !== $credentials->projectId) {
+
+        // Step 1: Validate credentials using official key validation endpoint (/v1/auth/token)
+        $token = $this->http->get('deepgram', '/v1/auth/token', $credentials, deadline: $deadline);
+        if (! is_array($token) || empty($token['api_key_id'])) {
             throw new ProviderFailure('unexpected_response', 200);
         }
-        $data = $this->http->get('deepgram', $path.'/models', $credentials, ['include_outdated' => 'false'], $deadline);
+
+        // Step 2: Discover models through official models endpoint (/v1/models)
+        $data = $this->http->get('deepgram', '/v1/models', $credentials, deadline: $deadline);
         $normalizer = new Catalog($credentials);
         $models = $voices = [];
         foreach (ProviderHttpClient::list($data, $capability->value) as $entry) {
@@ -40,24 +43,13 @@ final class DeepgramAdapter implements ProviderAdapter
                 'languages' => $normalizer->languages($entry['languages'] ?? []),
                 'streaming' => is_bool($entry['streaming'] ?? null) ? $entry['streaming'] : null,
                 'voice_ids' => $capability->needsVoice() ? [$id] : [],
-                'source' => 'Authenticated project model metadata',
+                'source' => 'Authenticated Deepgram models API',
             ];
             if ($capability->needsVoice()) {
                 $voices[$id] = ['id' => $id, 'name' => $name, 'source' => 'Aura model identifies its voice'];
             }
         }
-        $usage = $warnings = [];
-        try {
-            $balances = $this->http->get('deepgram', $path.'/balances', $credentials, deadline: $deadline);
-            foreach (ProviderHttpClient::list($balances, 'balances', 100) as $balance) {
-                if (is_numeric($balance['amount'] ?? null) && is_finite((float) $balance['amount']) && abs((float) $balance['amount']) < 1.0e12 && is_string($balance['units'] ?? null) && preg_match('/\A[A-Z]{3}\z/D', $balance['units'])) {
-                    $usage[] = ['label' => 'Project balance ('.$balance['units'].')', 'value' => (string) round((float) $balance['amount'], 4)];
-                }
-            }
-        } catch (ProviderFailure $failure) {
-            $warnings[] = 'Optional project balance is unavailable ('.$failure->reason.($failure->httpStatus ? ', HTTP '.$failure->httpStatus : '').'). Authentication/catalog results are independent.';
-        }
 
-        return $normalizer->discovery(array_values($models), array_values($voices), $usage, $warnings);
+        return $normalizer->discovery(array_values($models), array_values($voices));
     }
 }

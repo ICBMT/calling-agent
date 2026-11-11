@@ -8,9 +8,9 @@
         id="key-help">{{ isset($configuration) && $configuration->hasCredential() ? 'Stored securely: ••••••••. Leave blank to keep it. The existing value is never returned to this page.' : 'Encrypted on save. The stored key is never returned to this page or included in validation old input.' }}</span>
 </div>
 @if (($provider ?? $configuration->provider) === 'deepgram')
-    <div class="field"><label for="project_id">Deepgram project UUID</label><input id="project_id" name="project_id"
-            required maxlength="36" value="{{ old('project_id', $configuration->project_id ?? '') }}"
-            autocomplete="off"><span class="field-help">The project containing this key, copied from the Deepgram
+    <div class="field"><label for="project_id">Deepgram project UUID <span>optional</span></label><input id="project_id" name="project_id"
+            maxlength="64" value="{{ old('project_id', $configuration->project_id ?? '') }}"
+            autocomplete="off"><span class="field-help">Optional project identifier (e.g. proj_... or UUID), copied from the Deepgram
             console.</span></div>
 @elseif (($provider ?? $configuration->provider) === 'openai')
     <div class="form-row">

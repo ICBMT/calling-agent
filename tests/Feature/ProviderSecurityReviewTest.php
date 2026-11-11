@@ -275,7 +275,6 @@ class ProviderSecurityReviewTest extends TestCase
     {
         return [
             'Deepgram language' => ['deepgram', 'language', 'abc-DEFGHIJK'],
-            'Deepgram balance' => ['deepgram', 'amount', '12345678'],
             'ElevenLabs language' => ['elevenlabs', 'language', 'abc-DEFGHIJK'],
             'ElevenLabs allowance' => ['elevenlabs', 'amount', '12345678'],
         ];
@@ -291,9 +290,8 @@ class ProviderSecurityReviewTest extends TestCase
             'api_key' => $secret, 'project_id' => $provider === 'deepgram' ? $project : null,
         ]));
         Http::fake([
-            'api.deepgram.com/v1/projects/'.$project => Http::response(['project_id' => $project]),
-            'api.deepgram.com/v1/projects/'.$project.'/models*' => Http::response(['stt' => [['canonical_name' => 'nova-3', 'languages' => [$field === 'language' ? $secret : 'en']]]]),
-            'api.deepgram.com/v1/projects/'.$project.'/balances' => Http::response(['balances' => [['amount' => (int) $secret, 'units' => 'USD']]]),
+            'api.deepgram.com/v1/auth/token' => Http::response(['api_key_id' => 'dg-key-sentinel']),
+            'api.deepgram.com/v1/models*' => Http::response(['stt' => [['canonical_name' => 'nova-3', 'languages' => [$field === 'language' ? $secret : 'en']]]]),
             'api.elevenlabs.io/v1/user/subscription' => Http::response(['tier' => 'starter', 'character_count' => $field === 'amount' ? (int) $secret : 1, 'character_limit' => 30000]),
             'api.elevenlabs.io/v1/models' => Http::response([['model_id' => 'eleven_v3', 'can_do_text_to_speech' => true, 'languages' => [['language_id' => $field === 'language' ? $secret : 'en']]]]),
             'api.elevenlabs.io/v2/voices*' => Http::response(['voices' => [['voice_id' => 'ordinary', 'category' => 'premade']], 'has_more' => false]),

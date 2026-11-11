@@ -170,51 +170,115 @@ class ProviderAdapterTest extends TestCase
         app(GeminiAdapter::class)->discover($this->credentials(), Capability::Realtime);
     }
 
-    public function test_deepgram_authenticates_project_and_uses_account_catalog_not_just_public_models(): void
+    public function test_deepgram_authenticates_via_auth_token_and_discovers_models(): void
     {
-        $base = 'api.deepgram.com/v1/projects/'.$this->credentials()->projectId;
         Http::fake([
-            $base => Http::response(['project_id' => $this->credentials()->projectId]),
-            $base.'/models*' => Http::response(['stt' => [['canonical_name' => 'nova-3-general', 'name' => 'Nova 3', 'languages' => ['en', 'ur', 'invalid language'], 'streaming' => true]], 'tts' => [['canonical_name' => 'aura-2-thalia-en', 'name' => 'Thalia', 'languages' => ['en']]]]),
-            $base.'/balances' => Http::response(['balances' => [['amount' => 12.75, 'units' => 'USD', 'balance_id' => 'private-id', 'purchase_order_id' => 'private-order']]]),
+            'api.deepgram.com/v1/auth/token' => Http::response(['api_key_id' => 'dg-key-sentinel', 'key' => 'dg-key-preview']),
+            'api.deepgram.com/v1/models*' => Http::response([
+                'stt' => [['canonical_name' => 'nova-3-general', 'name' => 'Nova 3', 'languages' => ['en', 'ur', 'invalid language'], 'streaming' => true]],
+                'tts' => [['canonical_name' => 'aura-2-thalia-en', 'name' => 'Thalia', 'languages' => ['en']]],
+            ]),
         ]);
-        $result = app(DeepgramAdapter::class)->discover($this->credentials(), Capability::SpeechToText);
-        $this->assertSame(['nova-3-general'], array_column($result->models, 'id'));
-        $this->assertSame(['en', 'ur'], $result->models[0]['languages']);
-        $this->assertTrue($result->models[0]['streaming']);
-        $this->assertSame('12.75', $result->usage[0]['value']);
-        $this->assertStringNotContainsString('private-order', json_encode($result));
+        $stt = app(DeepgramAdapter::class)->discover($this->credentials(), Capability::SpeechToText);
+        $this->assertSame(['nova-3-general'], array_column($stt->models, 'id'));
+        $this->assertSame(['en', 'ur'], $stt->models[0]['languages']);
+        $this->assertTrue($stt->models[0]['streaming']);
+        $this->assertSame([], $stt->usage);
+
         $tts = app(DeepgramAdapter::class)->discover($this->credentials(), Capability::TextToSpeech);
         $this->assertSame(['aura-2-thalia-en'], $tts->models[0]['voice_ids']);
         $this->assertSame('aura-2-thalia-en', $tts->voices[0]['id']);
-        Http::assertSent(fn ($request) => $request->hasHeader('Authorization', 'Token private-test-sentinel'));
-        Http::assertNotSent(fn ($request) => str_starts_with($request->url(), 'https://api.deepgram.com/v1/models'));
+
+        Http::assertSent(fn ($request) => $request->url() === 'https://api.deepgram.com/v1/auth/token' && $request->hasHeader('Authorization', 'Token private-test-sentinel'));
+        Http::assertSent(fn ($request) => $request->url() === 'https://api.deepgram.com/v1/models');
     }
 
-    public function test_denied_optional_deepgram_balance_does_not_fake_a_balance_or_fail_authentication(): void
+    public function test_deepgram_discovers_models_without_requiring_project_id(): void
     {
-        $base = 'api.deepgram.com/v1/projects/'.$this->credentials()->projectId;
         Http::fake([
-            $base => Http::response(['project_id' => $this->credentials()->projectId]),
-            $base.'/models*' => Http::response(['stt' => []]),
-            $base.'/balances' => Http::response(['message' => 'private-test-sentinel'], 403),
+            'api.deepgram.com/v1/auth/token' => Http::response(['api_key_id' => 'dg-key-sentinel']),
+            'api.deepgram.com/v1/models*' => Http::response([
+                'stt' => [['canonical_name' => 'nova-3-general', 'name' => 'Nova 3', 'languages' => ['en'], 'streaming' => true]],
+            ]),
         ]);
-        $result = app(DeepgramAdapter::class)->discover($this->credentials(), Capability::SpeechToText);
-        $this->assertSame([], $result->usage);
-        $this->assertStringContainsString('HTTP 403', $result->warnings[0]);
-        $this->assertStringNotContainsString('private-test-sentinel', $result->warnings[0]);
+        $noProjectCreds = new ProviderCredentials('private-test-sentinel', null, null);
+        $result = app(DeepgramAdapter::class)->discover($noProjectCreds, Capability::SpeechToText);
+        $this->assertSame(['nova-3-general'], array_column($result->models, 'id'));
+        Http::assertSent(fn ($request) => $request->url() === 'https://api.deepgram.com/v1/auth/token');
     }
 
-    public function test_deepgram_project_mismatch_or_denied_auth_never_falls_back_to_a_public_catalog(): void
+    public function test_deepgram_invalid_credentials_returns_invalid_credentials_failure(): void
     {
-        Http::fake(['api.deepgram.com/v1/projects/*' => Http::response(['project_id' => 'different-project'])]);
+        Http::fake([
+            'api.deepgram.com/v1/auth/token' => Http::response(['err_code' => 'INVALID_AUTH', 'err_msg' => 'Invalid credentials.'], 401),
+        ]);
         try {
             app(DeepgramAdapter::class)->discover($this->credentials(), Capability::SpeechToText);
-            $this->fail('Project mismatch cannot be accepted.');
+            $this->fail('Invalid credentials must not be accepted.');
+        } catch (ProviderFailure $failure) {
+            $this->assertSame('invalid_credentials', $failure->reason);
+            $this->assertSame(401, $failure->httpStatus);
+        }
+        Http::assertSentCount(1);
+    }
+
+    public function test_deepgram_unexpected_auth_token_response_fails_closed(): void
+    {
+        Http::fake([
+            'api.deepgram.com/v1/auth/token' => Http::response(['missing_api_key_id' => true]),
+        ]);
+        try {
+            app(DeepgramAdapter::class)->discover($this->credentials(), Capability::SpeechToText);
+            $this->fail('Malformed auth/token response must not be accepted.');
         } catch (ProviderFailure $failure) {
             $this->assertSame('unexpected_response', $failure->reason);
         }
-        Http::assertSentCount(1);
+    }
+
+    public function test_gemini_requests_prebuilt_voices_with_type_filter_and_max_page_size_for_realtime(): void
+    {
+        Http::fake([
+            'generativelanguage.googleapis.com/v1beta/models*' => Http::response([
+                'models' => [['name' => 'models/gemini-3.8-live', 'supportedGenerationMethods' => ['bidiGenerateContent']]],
+            ]),
+            'generativelanguage.googleapis.com/v1beta/voices*' => Http::response([
+                'voices' => [['id' => 'Kore', 'type' => 'prebuilt', 'display_name' => 'Kore']],
+            ]),
+        ]);
+        $result = app(GeminiAdapter::class)->discover($this->credentials(), Capability::Realtime);
+        $this->assertSame(['gemini-3.8-live'], array_column($result->models, 'id'));
+        $this->assertSame(['Kore'], $result->models[0]['voice_ids']);
+
+        Http::assertSent(function ($request) {
+            if (str_contains($request->url(), '/voices')) {
+                return ($request['type'] ?? null) === 'prebuilt'
+                    && ($request['page_size'] ?? null) == 1000;
+            }
+            if (str_contains($request->url(), '/models')) {
+                return ($request['pageSize'] ?? null) == 1000;
+            }
+            return true;
+        });
+    }
+
+    public function test_gemini_dynamically_verifies_bidi_generate_content_for_realtime(): void
+    {
+        Http::fake([
+            'generativelanguage.googleapis.com/v1beta/models*' => Http::response([
+                'models' => [
+                    ['name' => 'models/gemini-3.8-live', 'supportedGenerationMethods' => ['bidiGenerateContent']],
+                    ['name' => 'models/gemini-3.8-flash', 'supportedGenerationMethods' => ['generateContent']],
+                ],
+            ]),
+            'generativelanguage.googleapis.com/v1beta/voices*' => Http::response([
+                'voices' => [['id' => 'Puck', 'type' => 'prebuilt']],
+            ]),
+        ]);
+        $realtime = app(GeminiAdapter::class)->discover($this->credentials(), Capability::Realtime);
+        $this->assertSame(['gemini-3.8-live'], array_column($realtime->models, 'id'));
+
+        $llm = app(GeminiAdapter::class)->discover($this->credentials(), Capability::LanguageModel);
+        $this->assertSame(['gemini-3.8-flash'], array_column($llm->models, 'id'));
     }
 
     private function fakeElevenLabs(array $voices): void

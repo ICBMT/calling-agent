@@ -61,15 +61,15 @@ return [
             'name' => 'Deepgram', 'initials' => 'D', 'adapter' => DeepgramAdapter::class,
             'capabilities' => ['stt', 'tts'],
             'endpoint' => 'https://api.deepgram.com/v1',
-            'docs' => 'https://developers.deepgram.com/reference/manage/projects/models/list',
+            'docs' => 'https://developers.deepgram.com/reference/manage/models/list',
             'console' => 'https://console.deepgram.com/',
             'usage_url' => 'https://console.deepgram.com/',
             'pricing_url' => 'https://deepgram.com/pricing',
             'summary' => 'Project-specific transcription models and Aura voice-model choices.',
             'instructions' => [
-                'Create a Deepgram project API key and copy its project UUID from the Deepgram console.',
-                'Allow project read and model discovery. Balance read is optional; denied balance access does not invalidate a successful project/catalog check.',
-                'Voca verifies the authenticated project and its model catalog, not the public model list alone. In Aura, the selected model already identifies the voice.',
+                'Create a Deepgram API key in the Deepgram console.',
+                'Voca authenticates using the official key validation endpoint (/v1/auth/token) and discovers available models (/v1/models).',
+                'Project ID is optional. In Aura, the selected model already identifies the voice.',
             ],
             'comparison' => [
                 'Billing / free tier' => 'Metered speech usage; promotional credits and plans vary. Balance is not a usage/cost ledger.',
@@ -137,7 +137,6 @@ return [
             'tts-1-hd' => ['capability' => 'tts', 'api' => 'Audio speech (deprecated)', 'shutdown_date' => '2027-01-06', 'voices' => ['alloy', 'ash', 'coral', 'echo', 'fable', 'onyx', 'nova', 'sage', 'shimmer']],
         ],
         'gemini' => [
-            'gemini-4-argon' => ['capability' => 'llm', 'api' => 'Gemini text'],
             'gemini-3.8-flash' => ['capability' => 'llm', 'api' => 'Gemini text'],
             'gemini-3.6-flash' => ['capability' => 'llm', 'api' => 'Gemini text'],
             'gemini-3.5-flash-lite' => ['capability' => 'llm', 'api' => 'Gemini text'],

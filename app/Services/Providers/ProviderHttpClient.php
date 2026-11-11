@@ -24,7 +24,7 @@ final class ProviderHttpClient
         $allowed = match ($provider) {
             'openai' => $path === '/v1/models',
             'gemini' => in_array($path, ['/v1beta/models', '/v1beta/voices'], true),
-            'deepgram' => (bool) preg_match('~\A/v1/projects/[a-f0-9-]{36}(?:/models|/balances)?\z~iD', $path),
+            'deepgram' => in_array($path, ['/v1/auth/token', '/v1/models'], true),
             'elevenlabs' => in_array($path, ['/v1/user/subscription', '/v1/models', '/v2/voices'], true),
             default => false,
         };
@@ -33,7 +33,7 @@ final class ProviderHttpClient
         }
         // Pagination tokens are untrusted metadata too. Never put the API key into any URL.
         $allowedQuery = match ($provider) {
-            'gemini' => $path === '/v1beta/voices' ? ['page_size', 'page_token'] : ['pageSize', 'pageToken'],
+            'gemini' => $path === '/v1beta/voices' ? ['page_size', 'page_token', 'type'] : ['pageSize', 'pageToken'],
             'deepgram' => str_ends_with($path, '/models') ? ['include_outdated'] : [],
             'elevenlabs' => $path === '/v2/voices' ? ['page_size', 'next_page_token', 'include_total_count'] : [],
             default => [],

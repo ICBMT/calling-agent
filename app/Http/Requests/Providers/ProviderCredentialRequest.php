@@ -30,7 +30,7 @@ class ProviderCredentialRequest extends FormRequest
             'capability' => $creating ? ['required', Rule::enum(Capability::class)] : ['prohibited'],
             'api_key' => [$creating ? 'required' : 'nullable', 'string', 'min:8', 'max:2048', 'regex:/\A[\x21-\x7E]+\z/D'],
             'project_id' => match ($provider) {
-                'deepgram' => ['required', 'uuid', 'max:36'],
+                'deepgram' => ['nullable', 'string', 'max:64', 'regex:/\A[a-zA-Z0-9_-]+\z/D'],
                 'openai' => ['nullable', 'string', 'max:100', 'regex:/\A[a-zA-Z0-9_-]+\z/D'],
                 default => ['prohibited'],
             },
