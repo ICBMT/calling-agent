@@ -182,3 +182,34 @@ def test_clock_skew_cannot_create_unbounded_provider_lifetime():
     lease = AuthorityLease(9999999999, 1000, clock=lambda: now[0], wall=lambda: 0)
     assert lease.deadline == 900
     assert lease.authorized_until == 30
+
+
+def test_realism_engine_shapes_turns_interruptions_and_closing(grant_data, dispatch):
+    grant = SessionGrant.parse(grant_data, dispatch)
+    text = instructions(grant)
+    # Voice-channel realism anchors every browser session is built on.
+    assert "one or two short sentences" in text
+    assert "one question at a time" in text
+    assert "read it back slowly" in text
+    assert "interrupts" in text
+    assert "close warmly" in text
+    assert "markdown" in text
+    # The fixture personality renders its concrete tone guidance, not just the token.
+    assert "Warm, upbeat and personable" in text
+    assert grant.credentials.api_key.get_secret_value() not in text
+
+
+def test_every_supported_personality_gets_distinct_tone_guidance(grant_data, dispatch):
+    from voca.native import personality_guide
+
+    tones = {
+        personality_guide(value)
+        for value in ("friendly", "professional", "empathetic", "concise")
+    }
+    assert len(tones) == 4
+    # Unknown or tampered values fail safe to the friendly tone.
+    assert personality_guide("unknown") == personality_guide("friendly")
+
+    grant_data["configuration"]["personality"] = "concise"
+    grant = SessionGrant.parse(grant_data, dispatch)
+    assert "Crisp and direct" in instructions(grant)

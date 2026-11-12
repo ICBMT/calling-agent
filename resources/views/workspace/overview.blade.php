@@ -31,6 +31,40 @@
             <div><x-icon name="wave" /></div><span>✳</span>
         </div><span class="welcome-coordinate">V.01 / YOUR VOICE, IN THE MAKING</span>
     </div>
+    @php
+        $journeyChecks = collect($checks)->keyBy('label');
+        $voiceReady = ($journeyChecks['Voice engine']['ok'] ?? false) && ($journeyChecks['Voice worker']['ok'] ?? false);
+        $journey = [
+            ['title' => 'Create your agent', 'detail' => 'A name, a purpose, a personality — plus realistic call instructions.', 'done' => $metrics['agents'] > 0, 'href' => route('workspace.agents.index'), 'action' => 'Open agents'],
+            ['title' => 'Verify a realtime provider', 'detail' => 'Save an OpenAI or Gemini key and pass a genuine Test Connection.', 'done' => (bool) ($journeyChecks['Provider authentication']['ok'] ?? false), 'href' => route('workspace.providers.index'), 'action' => 'Open providers'],
+            ['title' => 'Bring the voice engine online', 'detail' => 'LiveKit reachable and the Python voice worker registered.', 'done' => $voiceReady, 'href' => route('workspace.setup'), 'action' => 'Open setup checks'],
+            ['title' => 'Run a live browser call', 'detail' => 'Consent, microphone on, and a real two-way conversation in the Playground.', 'done' => false, 'href' => route('workspace.playground'), 'action' => 'Open playground'],
+        ];
+        $journeyNext = collect($journey)->firstWhere('done', false);
+    @endphp
+    <section class="workspace-panel journey-panel" aria-label="Guided setup">
+        <div class="panel-heading">
+            <h2>Your path to a first live conversation</h2>
+            <span class="status-tag {{ $journeyNext ? 'status-tag--warn' : 'status-tag--good' }}">
+                {{ $journeyNext ? 'In progress' : 'Ready' }}</span>
+        </div>
+        <ol class="journey-steps">
+            @foreach ($journey as $index => $step)
+                <li @class(['journey-step', 'is-done' => $step['done'], 'is-next' => $journeyNext === $step])>
+                    <span class="journey-index">
+                        <x-icon :name="$step['done'] ? 'check' : 'arrow-right'" /></span>
+                    <div>
+                        <h3>{{ $index + 1 }}. {{ $step['title'] }}</h3>
+                        <p>{{ $step['detail'] }}</p>
+                        <a href="{{ $step['href'] }}" class="inline-link">{{ $step['action'] }} <x-icon
+                                name="arrow-right" /></a>
+                    </div>
+                </li>
+            @endforeach
+        </ol>
+        <p class="journey-honesty"><x-icon name="info" />Every green step was verified for real — a saved key,
+            a passing connection test, a registered worker. Nothing here is decorative.</p>
+    </section>
     <div class="metric-grid">
         <article class="metric-card"><span>Total calls <x-icon
                     name="phone" /></span><strong>{{ number_format($metrics['calls']) }}</strong><small>In the

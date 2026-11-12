@@ -3437,3 +3437,138 @@
 .flash-status--error > .icon-button {
     color: #823e42;
 }
+
+/* Guided first-call journey (overview) */
+.journey-panel {
+    margin-top: 18px;
+}
+.journey-steps {
+    list-style: none;
+    margin: 6px 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+}
+.journey-step {
+    display: flex;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: #fbfaff;
+}
+.journey-step h3 {
+    margin: 0 0 4px;
+    font-size: 14px;
+}
+.journey-step p {
+    margin: 0 0 8px;
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.45;
+}
+.journey-step .inline-link {
+    font-size: 12.5px;
+    font-weight: 600;
+}
+.journey-index {
+    flex: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: #ece7f4;
+    color: var(--grape);
+}
+.journey-index .icon {
+    width: 14px;
+    height: 14px;
+}
+.journey-step.is-done {
+    background: #f6ffe1;
+    border-color: #d7ff00;
+}
+.journey-step.is-done .journey-index {
+    background: #d7ff00;
+    color: #2a3312;
+}
+.journey-step.is-next {
+    border-color: var(--grape);
+    box-shadow: 0 6px 20px rgba(109, 40, 217, 0.12);
+}
+.journey-honesty {
+    margin: 14px 0 0;
+    font-size: 12.5px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.journey-honesty .icon {
+    width: 14px;
+    height: 14px;
+    color: var(--grape);
+}
+@media (max-width: 1100px) {
+    .journey-steps {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+@media (max-width: 640px) {
+    .journey-steps {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Agent builder realism presets */
+.preset-bar {
+    margin-top: 14px;
+    padding: 14px;
+    border: 1px dashed var(--line);
+    border-radius: 16px;
+    background: #fbfaff;
+}
+.preset-bar-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink);
+}
+.preset-bar-label .icon {
+    width: 14px;
+    height: 14px;
+    color: var(--grape);
+}
+.preset-bar-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 10px 0;
+}
+.preset-button {
+    appearance: none;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+    border-radius: 999px;
+    padding: 7px 14px;
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+        border-color 0.15s ease,
+        background 0.15s ease;
+}
+.preset-button:hover {
+    border-color: var(--grape);
+    background: #f3edfb;
+}
+.preset-button:focus-visible {
+    outline: 2px solid var(--grape);
+    outline-offset: 2px;
+}

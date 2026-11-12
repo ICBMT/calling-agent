@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-11-11 (evening) — Realism engine, guided journey & builder presets
+
+### Added
+
+- **Conversation realism engine (`voice-worker/voca/native.py`):** every browser session now
+  builds on explicit voice-channel grounding — plain spoken language only (no markdown, lists,
+  emoji or URLs read aloud), one-to-two-sentence turns, exactly one question per turn,
+  read-back confirmation for captured names/numbers/emails, gentle handling of silence or
+  unclear audio, immediate interruption abandonment, and a full open → understand → help →
+  recap → close call flow. Distinct tone guidance per saved personality (friendly,
+  professional, empathetic, concise) with a fail-safe fallback.
+- **Agent builder realism presets (`resources/js/workspace/agent-templates.js`):** one-click
+  proven patterns (Receptionist, Customer support, Appointments, Sales) fill purpose, a spoken
+  opening line, and realistic call-handling instructions in the agent form, plus a
+  "Suggest an opening line" helper per purpose. All output stays within validation limits.
+- **Guided first-call journey on the Overview:** a four-step strip (agent → verified provider →
+  voice engine online → live playground call) driven by the genuine `SystemHealth` checks, with
+  done/next states and direct links. Pure presentational addition; no controller changes.
+
+### Testing
+
+- Python worker: **88 tests passing** (+2 realism-engine guarantees), Ruff clean.
+- JavaScript: **29 tests passing** (+5 agent-template guarantees), Prettier clean, Vite build passing.
+
+---
+
 ## 2026-11-11 — Playground repair & guided setup
 
 ### Fixed

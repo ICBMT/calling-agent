@@ -47,6 +47,20 @@
                             class="optional-label">OPTIONAL</span></label><input id="description"
                         name="description" maxlength="500" value="{{ old('description', $agent->description) }}"
                         placeholder="What should your team know about this agent?"></div>
+                @if ($canManage)
+                    <div class="preset-bar">
+                        <span class="preset-bar-label"><x-icon name="sparkles" />Start from a proven
+                            pattern:</span>
+                        <div class="preset-bar-buttons">
+                            @foreach (['receptionist' => 'Receptionist', 'support' => 'Customer support', 'appointments' => 'Appointments', 'sales' => 'Sales'] as $presetKey => $presetLabel)
+                                <button type="button" class="preset-button"
+                                    @click="preset('{{ $presetKey }}')">{{ $presetLabel }}</button>
+                            @endforeach
+                        </div>
+                        <small class="field-hint">One click fills the role, opening line and realistic call-handling
+                            instructions. Review and edit everything before saving.</small>
+                    </div>
+                @endif
             </section>
             <section class="workspace-panel form-panel">
                 <div class="form-section-heading"><span>02</span>
@@ -75,8 +89,14 @@
                 </div>
                 <p class="form-section-note"><x-icon name="info" />This saves a language preference. Actual
                     speech and voices will depend on a verified provider.</p>
-                <div class="field"><label for="greeting">The opening line <span
-                            class="optional-label">OPTIONAL</span></label>
+                <div class="field">
+                    <div class="field-label-row"><label for="greeting">The opening line <span
+                                class="optional-label">OPTIONAL</span></label>
+                        @if ($canManage)
+                            <button type="button" class="template-button" @click="suggestGreeting()"><x-icon
+                                    name="sparkles" />Suggest an opening line</button>
+                        @endif
+                    </div>
                     <textarea id="greeting" name="greeting" rows="2" maxlength="500"
                         placeholder="Hello! Thanks for calling. How can I make your day easier?">{{ old('greeting', $agent->greeting) }}</textarea><span class="field-help">Make it welcoming. Disclose that this is an
                         AI assistant before a real call.</span>

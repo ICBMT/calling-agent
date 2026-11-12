@@ -50,17 +50,53 @@ class ObservedGeminiRealtimeModel(google_realtime.RealtimeModel):
         return session
 
 
+PERSONALITY_GUIDE = {
+    "friendly": (
+        "Warm, upbeat and personable. Use the caller\u2019s name once you know it, "
+        "keep energy calm and positive, and let a little natural warmth come through."
+    ),
+    "professional": (
+        "Polished, precise and efficient. Courteous but businesslike; skip small talk "
+        "unless the caller starts it."
+    ),
+    "empathetic": (
+        "Patient, gentle and reassuring. Acknowledge how the caller feels before solving "
+        "anything; never rush their story."
+    ),
+    "concise": (
+        "Crisp and direct. Short sentences, no filler, get to the point while staying polite."
+    ),
+}
+
+VOICE_DISCIPLINE = (
+    "Voice channel rules: speak in plain conversational language only - never read out markdown, "
+    "bullet points, emoji, or URLs. Keep each turn to one or two short sentences unless the caller "
+    "asks for detail. Ask exactly one question at a time and wait for the answer. "
+    "When you capture a name, number, email or reference, read it back slowly to confirm it. "
+    "If the line goes quiet or the audio is unclear, gently check in instead of guessing. "
+    "If the caller interrupts, abandon your current sentence immediately and answer their newest point. "
+    "Flow of the call: open warmly, understand the need in the caller\u2019s own words, help with it, "
+    "then briefly recap, ask if anything else is needed, and close warmly."
+)
+
+
+def personality_guide(value: str) -> str:
+    return PERSONALITY_GUIDE.get(value, PERSONALITY_GUIDE["friendly"])
+
+
 def instructions(grant: SessionGrant) -> str:
     config = grant.configuration
     return (
         "You are an AI assistant in a browser voice test, not a human or a telephone call. "
-        "Clearly disclose that you are an AI assistant in your opening. Keep replies natural, "
-        "conversational and usually brief. Do not invent actions, account access or successful "
+        "Clearly disclose that you are an AI assistant in your opening. "
+        + VOICE_DISCIPLINE
+        + " Do not invent actions, account access or successful "
         "transfers: no external tools are connected in this test. "
         f"The requested spoken language is {LANGUAGES[config.language]}. Follow the user's "
         "language if they switch; Urdu-English and Hindi-English code switching is welcome. "
         "If you cannot understand, ask a short clarification instead of making up a transcript. "
-        f"Requested personality: {config.personality}.\n\nSaved draft instructions:\n"
+        f"Requested personality: {config.personality} - {personality_guide(config.personality)}\n\n"
+        "Saved draft instructions:\n"
         + config.instructions
         + "\n\nThis remains an AI browser test; do not claim to be human or to have completed "
         "unavailable real-world actions."

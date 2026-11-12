@@ -32,7 +32,9 @@ The built assets are served by Laravel; a separate Vite server is not needed for
 - Register, sign in, remember-device authentication, and sign out.
 - An isolated organization and owner membership created with every account.
 - Owner/admin mutation permissions and member read-only access, enforced on the server.
-- Create, edit, search, and soft-delete draft agents, with personality, purpose, language preference, instructions, greeting, and a local starter-template generator.
+- Create, edit, search, and soft-delete draft agents, with personality, purpose, language preference, instructions, greeting, a local starter-template generator, and one-click realism presets (Receptionist, Support, Appointments, Sales) that fill proven call-handling instructions and a spoken opening line.
+- Guided first-call journey on the Overview: agent → verified provider → voice engine online → live playground call, backed by genuine health checks.
+- Conversation realism engine in the voice worker: spoken-only style rules, single-question turns, read-back confirmation of captured details, interruption abandonment, and a full open-to-close call flow, rendered per-agent through personality-specific tone guidance.
 - Business name, timezone, and default draft-language settings.
 - Actual database metrics and filtered call history. A new workspace starts empty.
 - Encrypted workspace provider keys for OpenAI, Google Gemini, Deepgram, and ElevenLabs, plus separately authorized optional platform defaults.
@@ -57,7 +59,7 @@ vendor/bin/pint --test
 voice-worker/.venv/bin/python -m pytest voice-worker/tests -q
 voice-worker/.venv/bin/ruff check voice-worker
 
-# JavaScript unit suite (24 tests, Prettier clean)
+# JavaScript unit suite (29 tests, Prettier clean)
 npm run test:unit
 npm run format:check
 

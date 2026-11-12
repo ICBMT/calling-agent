@@ -1,3 +1,4 @@
+import { greetingFor, instructionsFor, presetPurposes } from './workspace/agent-templates.js';
 import Alpine from 'alpinejs';
 import { microphoneLab } from './workspace/microphone.js';
 import { voicePlayground } from './workspace/voice/playground.js';
@@ -128,25 +129,65 @@ Alpine.data('agentBuilder', () => ({
     name: '',
     purpose: 'receptionist',
     personality: 'friendly',
-    template() {
+    presets: presetPurposes,
+    _context() {
         const form = this.$el.closest('form') || this.$el;
-        const name = form.querySelector('[name="name"]')?.value.trim() || 'a business assistant';
-        const purpose =
-            form
-                .querySelector('[name="purpose"]')
-                ?.selectedOptions[0]?.textContent.trim()
-                .toLowerCase() || 'receptionist';
-        const personality = form.querySelector('[name="personality"]')?.value || 'friendly';
-        const field = form.querySelector('[name="instructions"]');
-        if (!field) return;
+        return {
+            form,
+            name: form.querySelector('[name="name"]')?.value.trim() || '',
+            purpose: form.querySelector('[name="purpose"]')?.value || 'receptionist',
+            personality: form.querySelector('[name="personality"]')?.value || 'friendly',
+            instructions: form.querySelector('[name="instructions"]'),
+            greeting: form.querySelector('[name="greeting"]'),
+        };
+    },
+    _write(field, value) {
+        field.value = value;
+        field.dispatchEvent(new Event('input', { bubbles: true }));
+        field.dispatchEvent(new Event('change', { bubbles: true }));
+    },
+    template() {
+        const context = this._context();
+        if (!context.instructions) return;
         if (
-            field.value.trim() &&
+            context.instructions.value.trim() &&
             !window.confirm('Replace the current instructions with a starter template?')
         )
             return;
-        field.value = `You are ${name}, a ${personality} ${purpose}.\n\nYour goal\nWelcome callers and understand what they need. Keep answers clear and conversational. Ask one relevant question at a time.\n\nAccuracy\nUse only verified business information. If you do not know something, say so. Never invent prices, policies, or actions.\n\nHuman handoff\nWhen a caller needs a person, explain that you will help them reach the team. Do not claim a transfer or booking succeeded without confirmation.\n\nEnding the conversation\nCheck whether the caller needs anything else, then end politely.\n\nBusiness knowledge\nAdd your business facts and working hours here before connecting a provider.`;
-        field.dispatchEvent(new Event('input', { bubbles: true }));
-        field.focus();
+        this._write(context.instructions, instructionsFor(context));
+        context.instructions.focus();
+    },
+    suggestGreeting() {
+        const context = this._context();
+        if (!context.greeting) return;
+        if (
+            context.greeting.value.trim() &&
+            !window.confirm('Replace the current opening line with a suggestion?')
+        )
+            return;
+        this._write(context.greeting, greetingFor(context));
+        context.greeting.focus();
+    },
+    preset(purpose) {
+        const context = this._context();
+        const purposeSelect = context.form.querySelector('[name="purpose"]');
+        if (!purposeSelect || !this.presets.includes(purpose)) return;
+        purposeSelect.value = purpose;
+        purposeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        const filled =
+            (context.instructions?.value.trim() || '') !== '' ||
+            (context.greeting?.value.trim() || '') !== '';
+        if (
+            filled &&
+            !window.confirm(
+                'Fill this agent from the proven pattern? Your current instructions and opening line will be replaced.',
+            )
+        )
+            return;
+        const next = { ...context, purpose };
+        if (context.greeting) this._write(context.greeting, greetingFor(next));
+        if (context.instructions) this._write(context.instructions, instructionsFor(next));
+        context.instructions?.focus();
     },
 }));
 Alpine.data('providerSelection', () => ({
