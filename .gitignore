@@ -37,3 +37,11 @@
 **/__pycache__/
 *.pyc
 /voice-worker/*.egg-info/
+
+# Sandbox WASM PHP toolchain (installed on demand, never committed)
+/tooling/sandbox-php/node_modules/
+/tooling/browser/node_modules/
+/tooling/browser/.chromium/
+
+# Headless-browser sweep/flow output (regenerated on demand)
+/storage/browser-shots/

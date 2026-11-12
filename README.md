@@ -51,17 +51,24 @@ The built assets are served by Laravel; a separate Vite server is not needed for
 ## Verify
 
 ```sh
-# Full PHP backend test suite (218 tests / 1,730 assertions)
-php artisan test
+# Full PHP backend test suite (241 tests / 1,806 assertions)
+php artisan test                    # native PHP
+npm run test:php:wasm               # sandboxed machines: real PHP in WebAssembly
 vendor/bin/pint --test
 
-# Python voice worker suite (84 tests, Ruff clean)
+# Python voice worker suite (88 tests, Ruff clean)
 voice-worker/.venv/bin/python -m pytest voice-worker/tests -q
 voice-worker/.venv/bin/ruff check voice-worker
 
 # JavaScript unit suite (29 tests, Prettier clean)
 npm run test:unit
 npm run format:check
+
+# Sandboxed UI verification (headless Chromium, all assets from npm)
+npm run serve:wasm &                # serve the real app on :8000 via WASM PHP
+npm run ui:sweep                    # routes: status + console errors + screenshots
+npm run ui:flow                     # full register→workspace flow with screenshots
+
 
 # Frontend production build
 npm run build

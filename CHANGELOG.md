@@ -1,5 +1,41 @@
 # Changelog
 
+## 2026-11-11 (late evening) — Sandbox PHP runtime & headless-browser eyes
+
+### Added
+
+- **Real PHP + Composer in environments with neither (`tooling/sandbox-php/`):**
+  PHP 8.3–8.5 compiled to WebAssembly (`@php-wasm/node`) plus `mini_composer.py`,
+  a lock-pinned Composer substitute that installs all 109 packages from the only
+  reachable dist host (`codeload.github.com` zipballs). Generates PSR-4/PSR-0/
+  files/classmap autoloading and `vendor/composer/installed.json`, so package
+  auto-discovery keeps working.
+- **`npm run test:php:wasm`:** the entire PHPUnit suite — **241 tests / 1,806
+  assertions, green in ~16s** — real migrations, bcrypt, HTTP kernel, sqlite.
+  Uses `phpunit.wasm.xml` (result cache off, `APP_BASE_PATH`) and is honest
+  about limits: `artisan test`'s subprocess layers report unavailable instead of
+  faking it; doctor's Python probes degrade to explicit WARNINGs.
+- **Headless browser harness (`tooling/browser/`):** npm-bundled Chromium
+  (`@sparticuz/chromium` — no external download host) + puppeteer-core, with
+  software WebGL. `serve.mjs` serves the real app through the WASM SAPI on
+  port 8000 (like `php artisan serve`); `sweep.mjs` captures per-route status,
+  console errors and screenshots; `flow.mjs` registers a real account through
+  the actual forms and tours the authenticated workspace. Verified: landing,
+  login, register, guided-journey overview and agent-create realism preview
+  all render with zero JS errors.
+- **`tooling/restore-sandbox.sh` / `npm run setup:sandbox`:** one command that
+  rehydrates everything snapshotting strips (vendor/, node_modules, .venv,
+  Vite build, `.env` key, browser libs).
+
+### Fixed
+
+- WASM runtime hardening discovered by the new harness:
+  `zend.max_allowed_stack_size=-1` (the WASM build's C-stack probe misfires on
+  legitimately deep Laravel frames), OPcache disabled under WASM, and two
+  surgical vendor shims for destructor-time work that traps asyncify
+  (`Timebox` sleeps directly; `RefreshDatabase` families run `migrate:fresh`
+  eagerly). All marked `sandbox-wasm`, gated to WASM runs only.
+
 ## 2026-11-11 (evening) — Realism engine, guided journey & builder presets
 
 ### Added

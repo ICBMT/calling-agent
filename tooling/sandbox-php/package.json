@@ -1,0 +1,13 @@
+{
+    "name": "voca-sandbox-php",
+    "private": true,
+    "version": "1.0.0",
+    "type": "module",
+    "description": "Sandbox PHP runtime: real PHP 8.3-8.5 under WebAssembly plus a lock-pinned Composer substitute that only needs codeload.github.com.",
+    "dependencies": {
+        "@php-wasm/node": "^3.1.54",
+        "@php-wasm/node-8-3": "^3.1.54",
+        "@php-wasm/node-8-4": "^3.1.54",
+        "@php-wasm/node-8-5": "^3.1.54"
+    }
+}

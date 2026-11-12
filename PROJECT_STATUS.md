@@ -116,7 +116,7 @@
 
 | Check                             | Verified Result                          | Notes                                                                             |
 | --------------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------- |
-| Full PHP backend suite            | **240 tests / 1,802 assertions passing** | Unit, Feature, Isolation, Console, Telephony, Call Details                        |
+| Full PHP backend suite            | **241 tests / 1,806 assertions passing** | Unit, Feature, Isolation, Console, Telephony, Call Details; also runs under WASM  |
 | Python voice worker suite         | **88 tests passing** (2.13s), Ruff clean | Unit, Security, Grant, Leases, Metrics, Privacy, Realism                          |
 | JavaScript unit suite             | **29 tests passing**                     | Protocol, RTC Stats, Controller Logic, Session Endpoints, Agent Realism Templates |
 | Diagnostics check (`voca:doctor`) | **PASS** across 12 diagnostic areas      | Verifies CLI table & JSON mode                                                    |

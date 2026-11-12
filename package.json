@@ -8,7 +8,13 @@
         "test:unit": "node --test tests/Js/**/*.test.js",
         "test:browser": "npm run build && playwright test",
         "format": "prettier --write \"resources/js/**/*.js\" \"resources/css/**/*.css\" \"tests/Browser/**/*.js\" \"*.{js,json,md}\"",
-        "format:check": "prettier --check \"resources/js/**/*.js\" \"resources/css/**/*.css\" \"tests/Browser/**/*.js\" \"*.{js,json,md}\""
+        "format:check": "prettier --check \"resources/js/**/*.js\" \"resources/css/**/*.css\" \"tests/Browser/**/*.js\" \"*.{js,json,md}\"",
+        "test:php:wasm": "node tooling/sandbox-php/phpw.mjs vendor/phpunit/phpunit/phpunit -c phpunit.wasm.xml --no-progress --colors=never",
+        "setup:php:wasm": "npm --prefix tooling/sandbox-php ci && python3 tooling/sandbox-php/mini_composer.py && python3 tooling/sandbox-php/apply_wasm_shims.py",
+        "serve:wasm": "node tooling/browser/serve.mjs 8000",
+        "ui:sweep": "node tooling/browser/sweep.mjs",
+        "ui:flow": "node tooling/browser/flow.mjs",
+        "setup:sandbox": "bash tooling/restore-sandbox.sh"
     },
     "dependencies": {
         "@fontsource-variable/manrope": "^5.2.0",
