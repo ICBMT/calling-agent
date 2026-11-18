@@ -138,3 +138,55 @@ def test_room_output_queue_is_bounded_and_only_the_authorized_browser_is_address
         json.loads(packet.args[0])["seq"] == 37
     )  # A gap is observable, not silent transcript completeness.
     assert not errors
+
+
+def test_room_event_publish_retries_a_transient_failure_without_ending_session(
+    grant, monkeypatch
+):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    import voca.events as events_module
+
+    participant = SimpleNamespace(publish_data=AsyncMock(side_effect=[RuntimeError(), None]))
+    room = SimpleNamespace(local_participant=participant)
+    errors = []
+    output = RoomEvents(room, grant, lambda: errors.append(True))
+
+    async def no_delay(_seconds):
+        return None
+
+    monkeypatch.setattr(events_module.asyncio, "sleep", no_delay)
+
+    async def exercise():
+        output.emit("ready")
+        output.start()
+        await asyncio.wait_for(output.queue.join(), 1)
+        await output.close()
+
+    asyncio.run(exercise())
+    assert participant.publish_data.await_count == 2
+    assert not errors
+
+
+def test_room_event_publish_fails_after_its_reconnect_grace_expires(grant, monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    import voca.events as events_module
+
+    participant = SimpleNamespace(publish_data=AsyncMock(side_effect=RuntimeError()))
+    room = SimpleNamespace(local_participant=participant)
+    errors = []
+    output = RoomEvents(room, grant, lambda: errors.append(True))
+    monkeypatch.setattr(events_module, "EVENT_RECONNECT_GRACE_SECONDS", 0)
+
+    async def exercise():
+        output.emit("ready")
+        output.start()
+        await asyncio.wait_for(output.queue.join(), 1)
+        await output.close()
+
+    asyncio.run(exercise())
+    assert participant.publish_data.await_count == 1
+    assert errors == [True]

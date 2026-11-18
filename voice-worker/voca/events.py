@@ -10,6 +10,9 @@ from livekit import rtc
 from .contracts import SessionGrant
 
 
+EVENT_RECONNECT_GRACE_SECONDS = 70
+
+
 class RoomEvents:
     """Small, room-only UI events. Transcripts never pass through PHP or a telemetry upload."""
 
@@ -46,20 +49,39 @@ class RoomEvents:
     def start(self) -> None:
         self.task = asyncio.create_task(self._send())
 
+    async def _publish(self, packet: bytes) -> None:
+        deadline = time.monotonic() + EVENT_RECONNECT_GRACE_SECONDS
+        delay = 0.25
+        while True:
+            try:
+                await asyncio.wait_for(
+                    self.room.local_participant.publish_data(
+                        packet,
+                        reliable=True,
+                        topic="voca.events",
+                        destination_identities=[self.grant.participant_identity],
+                    ),
+                    timeout=3,
+                )
+                return
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                # Reliable data publication can fail while a browser is briefly absent.
+                # Retry in order during the same bounded window as audio reconnection;
+                # never turn a one-packet network blip into a terminal session error.
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise
+                await asyncio.sleep(min(delay, remaining))
+                delay = min(delay * 2, 2)
+
     async def _send(self) -> None:
         try:
             while True:
                 packet = await self.queue.get()
                 try:
-                    await asyncio.wait_for(
-                        self.room.local_participant.publish_data(
-                            packet,
-                            reliable=True,
-                            topic="voca.events",
-                            destination_identities=[self.grant.participant_identity],
-                        ),
-                        timeout=3,
-                    )
+                    await self._publish(packet)
                 finally:
                     self.queue.task_done()
         except asyncio.CancelledError:

@@ -5,6 +5,7 @@ import { VoiceTransport } from '../../resources/js/workspace/voice/livekit-trans
 test('LiveKit transport retries cancellation when RPC routing lags behind room recovery', async () => {
     const transport = Object.create(VoiceTransport.prototype);
     transport.closed = false;
+    transport.reconnectInterruptDelays = [0, 1];
     let attempts = 0;
     transport.interrupt = async () => {
         attempts += 1;
@@ -19,6 +20,7 @@ test('LiveKit transport retries cancellation when RPC routing lags behind room r
 test('LiveKit transport fails closed when reconnect cancellation is never confirmed', async () => {
     const transport = Object.create(VoiceTransport.prototype);
     transport.closed = false;
+    transport.reconnectInterruptDelays = [0, 1, 2];
     let attempts = 0;
     transport.interrupt = async () => {
         attempts += 1;
@@ -26,5 +28,5 @@ test('LiveKit transport fails closed when reconnect cancellation is never confir
     };
 
     await assert.rejects(transport.interruptAfterReconnect(), /Cancellation after reconnect/);
-    assert.equal(attempts, 2);
+    assert.equal(attempts, 3);
 });

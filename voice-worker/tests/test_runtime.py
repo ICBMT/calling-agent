@@ -158,6 +158,21 @@ def test_no_provider_context_is_reused_after_hard_expiry(grant, monkeypatch):
     asyncio.run(exercise())
 
 
+def test_transient_interrupt_failure_on_disconnect_does_not_end_session(grant, monkeypatch):
+    async def exercise():
+        runtime, session, *_ = setup(grant, monkeypatch)
+        runtime.session = session
+        session.interrupt.side_effect = RuntimeError("temporary provider interruption failure")
+
+        await runtime._cancel_on_disconnect()
+
+        assert session.interrupt.await_count == 1
+        assert not runtime.done.is_set()
+        assert runtime.error_code is None
+
+    asyncio.run(exercise())
+
+
 def test_watchdog_allows_livekit_reconnect_grace_before_stopping_browser_session(
     grant, monkeypatch
 ):

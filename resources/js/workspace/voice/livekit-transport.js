@@ -166,7 +166,8 @@ export class VoiceTransport {
     }
 
     async interruptAfterReconnect() {
-        const delays = [0, 600];
+        // Restored media/signaling can precede working RPC routing by several seconds.
+        const delays = this.reconnectInterruptDelays || [0, 500, 1500, 3000];
         for (const delay of delays) {
             if (this.closed) return;
             if (delay) await new Promise((resolve) => setTimeout(resolve, delay));

@@ -187,7 +187,11 @@ class VoiceRuntime:
             if self.session:
                 await asyncio.wait_for(self.session.interrupt(force=True), timeout=3)
         except Exception:
-            self.stop("browser_disconnected")
+            # A browser disconnect can make the provider-side interrupt transiently fail.
+            # Do not tear down the room here: the browser stays muted while reconnecting
+            # and must confirm interruption over RPC before it unmutes. The watchdog owns
+            # the bounded reconnect grace period and ends abandoned sessions afterwards.
+            safe_log("session.disconnect_cancel_pending", self.grant.session_id)
 
     async def _heartbeat(self) -> None:
         while not self.done.is_set():
