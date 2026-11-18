@@ -771,4 +771,16 @@ describe('Voice presence orb state machine', () => {
         assert.equal(ctrl.status, 'active');
         assert.equal(ctrl.stage, 'ready');
     });
+
+    it('does not regress readiness when room connection completes after the ready packet', () => {
+        const ctrl = controller();
+        ctrl.status = 'active';
+        ctrl.stage = 'ready';
+
+        ctrl.markRoomConnected();
+
+        assert.equal(ctrl.status, 'active');
+        assert.equal(ctrl.stage, 'ready');
+        assert.ok(ctrl.stageSteps.every((step) => step.done));
+    });
 });

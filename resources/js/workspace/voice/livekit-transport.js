@@ -12,6 +12,12 @@ import { audioPerformance } from './performance.js';
 // No room tokens, SDP, raw SDK exceptions or content forwarded to browser consoles/analytics.
 setLogLevel('silent');
 
+// Safe state-only diagnostics for local WebRTC testing; never log tokens, identities,
+// provider errors, audio, transcripts, SDP or SDK exception messages.
+function logTransportState(event) {
+    if (typeof console !== 'undefined') console.info(`[Voca voice] ${event}`);
+}
+
 export function acquireMicrophone() {
     return createLocalAudioTrack({
         echoCancellation: true,
@@ -86,6 +92,7 @@ export class VoiceTransport {
             element.muted = this.held;
             this.container.appendChild(element);
             this.remote.set(track.sid, { track, element });
+            logTransportState('agent audio track subscribed');
             callbacks.audioAttached();
         });
         room.on(RoomEvent.TrackUnsubscribed, (track) => this.detach(track.sid));
@@ -98,31 +105,38 @@ export class VoiceTransport {
             )
                 callbacks.packet(bytes);
         });
-        const reconnecting = () => {
+        const reconnecting = (path) => {
             if (this.closed) return;
+            logTransportState(`${path} reconnecting; remote playback held`);
             this.holdAudio(true);
             callbacks.reconnecting();
         };
-        room.on(RoomEvent.Reconnecting, reconnecting);
-        room.on(RoomEvent.SignalReconnecting, reconnecting);
+        room.on(RoomEvent.Reconnecting, () => reconnecting('media'));
+        room.on(RoomEvent.SignalReconnecting, () => reconnecting('signaling'));
         room.on(RoomEvent.Reconnected, async () => {
             if (this.closed || this.recoveryInProgress) return;
             this.recoveryInProgress = true;
+            logTransportState('room reconnected; confirming old response was interrupted');
             try {
                 // The signaling/RTC path can recover a fraction before RPC routing does.
                 // Keep playback muted and retry cancellation briefly; never replay stale audio.
                 await this.interruptAfterReconnect();
                 if (this.closed) return;
                 this.holdAudio(false);
+                logTransportState('recovery confirmed; remote playback resumed');
                 callbacks.reconnected();
             } catch {
+                logTransportState('reconnection cancellation was not confirmed');
                 callbacks.failed('browser_disconnected');
             } finally {
                 this.recoveryInProgress = false;
             }
         });
         room.on(RoomEvent.Disconnected, () => {
-            if (!this.closed) callbacks.failed('browser_disconnected');
+            if (!this.closed) {
+                logTransportState('room disconnected after SDK reconnect attempts');
+                callbacks.failed('browser_disconnected');
+            }
         });
         room.on(RoomEvent.AudioPlaybackStatusChanged, () =>
             callbacks.playback(room.canPlaybackAudio),

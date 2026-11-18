@@ -56,6 +56,7 @@ class VoiceRuntime:
         self.closing = False
         self.cleanup_lock = asyncio.Lock()
         self.control_lock = asyncio.Lock()
+        self.interrupt_lock = asyncio.Lock()
         self.cleaned = False
         self.lease = AuthorityLease(grant.expires_at, grant.lease_seconds)
         self.events = RoomEvents(ctx.room, grant, lambda: self.stop("browser_disconnected"))
@@ -102,10 +103,17 @@ class VoiceRuntime:
         if time.monotonic() - self.last_interrupt < 0.4:
             raise rtc.RpcError(1500, "Please wait before interrupting again.")
         self.last_interrupt = time.monotonic()
-        # SDK stops playout, response.cancel and conversation.item.truncate together.
-        await asyncio.wait_for(self.session.interrupt(force=True), timeout=3)
+        # Serialize browser RPCs with disconnect-triggered cancellation. Concurrent SDK
+        # interrupts can race its response.cancel / conversation truncation sequence.
+        await self._interrupt_session()
         self.events.emit("interrupted")
         return json.dumps({"interrupted": True})
+
+    async def _interrupt_session(self) -> None:
+        async with self.interrupt_lock:
+            if self.session and not self.closing:
+                # SDK stops playout, response.cancel and conversation.item.truncate together.
+                await asyncio.wait_for(self.session.interrupt(force=True), timeout=3)
 
     def _attach_events(self) -> None:
         @self.session.on("user_input_transcribed")
@@ -184,7 +192,7 @@ class VoiceRuntime:
     async def _cancel_on_disconnect(self) -> None:
         try:
             if self.session:
-                await asyncio.wait_for(self.session.interrupt(force=True), timeout=3)
+                await self._interrupt_session()
         except Exception:  # noqa: BLE001 - realtime plugin exceptions vary by provider
             # A browser disconnect can make the provider-side interrupt transiently fail.
             # Do not tear down the room here: the browser stays muted while reconnecting

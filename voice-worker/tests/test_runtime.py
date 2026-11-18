@@ -126,6 +126,31 @@ def test_interrupt_rpc_rejects_wrong_caller_session_and_expired_lease_and_uses_s
     asyncio.run(exercise())
 
 
+def test_disconnect_and_browser_interrupts_are_serialized_for_the_provider_session(
+    grant, monkeypatch
+):
+    async def exercise():
+        runtime, session, *_ = setup(grant, monkeypatch)
+        runtime.session = session
+        active = 0
+        maximum_active = 0
+
+        async def interrupt(*, force):
+            nonlocal active, maximum_active
+            assert force is True
+            active += 1
+            maximum_active = max(maximum_active, active)
+            await asyncio.sleep(0.01)
+            active -= 1
+
+        session.interrupt.side_effect = interrupt
+        await asyncio.gather(runtime._interrupt_session(), runtime._interrupt_session())
+        assert maximum_active == 1
+        assert session.interrupt.await_count == 2
+
+    asyncio.run(exercise())
+
+
 def test_membership_revocation_control_reply_stops_media_before_opening_provider(
     grant, monkeypatch
 ):

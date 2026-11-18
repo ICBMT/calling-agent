@@ -38,6 +38,7 @@ export function voicePlayground(initialOptions = null) {
         muted: false,
         canPlayback: true,
         sessionId: null,
+        reportedServerState: null,
         expiresAt: null,
         remainingSeconds: null,
         reconnecting: false,
@@ -462,6 +463,7 @@ export function voicePlayground(initialOptions = null) {
             this.error = null;
             this.errorCode = null;
             this.warning = null;
+            this.reportedServerState = null;
             this.status = 'requesting_mic';
             this.stage = 'idle';
 
@@ -599,12 +601,22 @@ export function voicePlayground(initialOptions = null) {
             }
 
             if (this.generation !== currentGen) return;
+            // The worker can become ready while connect() is still publishing the mic.
+            // Never regress a confirmed ready stage back to waiting_worker on completion.
+            this.markRoomConnected();
+            this.startPerformanceMonitoring(currentGen);
+            this.startLevelSampling(currentGen);
+        },
+
+        markRoomConnected() {
+            if (this.stage === 'ready') {
+                this.status = 'active';
+                return;
+            }
             // The WebRTC room is up, but the worker still has to claim the job and
             // handshake the realtime provider. Do not claim "live" until it confirms.
             this.stage = 'room';
             this.status = 'waiting_worker';
-            this.startPerformanceMonitoring(currentGen);
-            this.startLevelSampling(currentGen);
         },
 
         startPolling(currentGen) {
@@ -626,6 +638,23 @@ export function voicePlayground(initialOptions = null) {
                     if (this.generation !== currentGen) return;
                     const session = data?.session;
                     if (!session) return;
+                    const knownStates = [
+                        'provisioning',
+                        'dispatched',
+                        'starting',
+                        'active',
+                        'ended',
+                        'failed',
+                        'expired',
+                        'revoked',
+                    ];
+                    if (
+                        knownStates.includes(session.state) &&
+                        session.state !== this.reportedServerState
+                    ) {
+                        this.reportedServerState = session.state;
+                        console.info(`[Voca voice] backend session state: ${session.state}`);
+                    }
                     if (session.state === 'starting' && this.stage === 'room') {
                         // The worker has claimed the job and is handshaking the provider.
                         this.stage = 'worker';
