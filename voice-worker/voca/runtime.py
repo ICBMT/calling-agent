@@ -21,6 +21,11 @@ from .native import build_session, greeting_instructions, room_options
 from .privacy import safe_log, safe_text
 
 
+# Keep the agent's provider session alive long enough for LiveKit's default
+# jittered client reconnect schedule to restore the browser participant.
+PARTICIPANT_RECONNECT_GRACE_SECONDS = 70
+
+
 def provider_reason(error: object) -> str:
     current = error
     for _ in range(5):
@@ -226,7 +231,7 @@ class VoiceRuntime:
                     self.missing_since = None
                 elif self.missing_since is None:
                     self.missing_since = time.monotonic()
-                elif time.monotonic() - self.missing_since > 20:
+                elif time.monotonic() - self.missing_since > PARTICIPANT_RECONNECT_GRACE_SECONDS:
                     self.stop("browser_disconnected")
                     return
             await asyncio.sleep(0.25)

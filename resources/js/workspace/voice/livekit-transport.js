@@ -1,6 +1,7 @@
 import {
     AudioPresets,
     createLocalAudioTrack,
+    DefaultReconnectPolicy,
     Room,
     RoomEvent,
     setLogLevel,
@@ -41,6 +42,7 @@ export class VoiceTransport {
         this.held = false;
         this.remote = new Map();
         this.previousSender = null;
+        this.recoveryInProgress = false;
         this.room = new Room({
             adaptiveStream: false,
             dynacast: false,
@@ -52,12 +54,10 @@ export class VoiceTransport {
                 forceStereo: false,
                 stopMicTrackOnMute: true,
             },
-            reconnectPolicy: {
-                nextRetryDelayInMs({ retryCount, elapsedMs }) {
-                    if (elapsedMs > 15000 || retryCount >= 5) return null;
-                    return Math.min(500 * 2 ** retryCount, 3000);
-                },
-            },
+            // Use LiveKit's jittered retry schedule. The previous custom policy gave up
+            // after only five retries / about ten seconds, even for recoverable Wi-Fi,
+            // TURN, or temporary signaling drops.
+            reconnectPolicy: new DefaultReconnectPolicy(),
         });
         const room = this.room;
         const subscribe = (publication, participant) => {
@@ -106,15 +106,19 @@ export class VoiceTransport {
         room.on(RoomEvent.Reconnecting, reconnecting);
         room.on(RoomEvent.SignalReconnecting, reconnecting);
         room.on(RoomEvent.Reconnected, async () => {
-            if (this.closed) return;
+            if (this.closed || this.recoveryInProgress) return;
+            this.recoveryInProgress = true;
             try {
-                // Cancel pre-drop output before unmuting; never replay a stale response on recovery.
-                await this.interrupt();
+                // The signaling/RTC path can recover a fraction before RPC routing does.
+                // Keep playback muted and retry cancellation briefly; never replay stale audio.
+                await this.interruptAfterReconnect();
                 if (this.closed) return;
                 this.holdAudio(false);
                 callbacks.reconnected();
             } catch {
                 callbacks.failed('browser_disconnected');
+            } finally {
+                this.recoveryInProgress = false;
             }
         });
         room.on(RoomEvent.Disconnected, () => {
@@ -159,6 +163,21 @@ export class VoiceTransport {
             return;
         }
         this.callbacks.playback(this.room.canPlaybackAudio);
+    }
+
+    async interruptAfterReconnect() {
+        const delays = [0, 600];
+        for (const delay of delays) {
+            if (this.closed) return;
+            if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+            try {
+                await this.interrupt();
+                return;
+            } catch {
+                // A recovered room may briefly need time to restore the agent's RPC route.
+            }
+        }
+        throw new Error('Cancellation after reconnect was not confirmed.');
     }
 
     holdAudio(held) {

@@ -1,5 +1,6 @@
 import asyncio
 import json
+import time
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
@@ -153,6 +154,38 @@ def test_no_provider_context_is_reused_after_hard_expiry(grant, monkeypatch):
         assert runtime.error_code == "session_expired"
         session.start.assert_not_awaited()
         await runtime.shutdown()
+
+    asyncio.run(exercise())
+
+
+def test_watchdog_allows_livekit_reconnect_grace_before_stopping_browser_session(
+    grant, monkeypatch
+):
+    async def exercise():
+        runtime, *_ = setup(grant, monkeypatch)
+        runtime.joined = True
+        runtime.ctx.room.remote_participants = {}
+        runtime.missing_since = time.monotonic() - 30
+        runtime.lease.reason = Mock(return_value=None)
+        watchdog = asyncio.create_task(runtime._watchdog())
+        await asyncio.sleep(0.05)
+        assert not runtime.done.is_set()
+        assert runtime.error_code is None
+        runtime.done.set()
+        await asyncio.wait_for(watchdog, 1)
+
+    asyncio.run(exercise())
+
+
+def test_watchdog_stops_session_after_reconnect_grace_expires(grant, monkeypatch):
+    async def exercise():
+        runtime, *_ = setup(grant, monkeypatch)
+        runtime.joined = True
+        runtime.ctx.room.remote_participants = {}
+        runtime.missing_since = time.monotonic() - 71
+        runtime.lease.reason = Mock(return_value=None)
+        await runtime._watchdog()
+        assert runtime.error_code == "browser_disconnected"
 
     asyncio.run(exercise())
 
