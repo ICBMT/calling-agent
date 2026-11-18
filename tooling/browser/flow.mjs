@@ -32,6 +32,9 @@ const browser = await puppeteer.launch({
         LD_LIBRARY_PATH: [
             process.env.CHROMIUM_LIBS,
             path.join(chromiumHome, 'libs', 'lib'),
+            // Software GL (ANGLE on swiftshader) lives in its own directory
+            // after extract-libs.mjs; without it WebGL contexts fail.
+            path.join(chromiumHome, 'swiftshader'),
             chromiumHome,
         ]
             .filter(Boolean)

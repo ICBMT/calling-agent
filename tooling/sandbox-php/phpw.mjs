@@ -5,7 +5,7 @@ import { loadNodeRuntime, createNodeFsMountHandler } from '@php-wasm/node';
 
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-const APP_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const APP_ROOT = path.resolve(process.env.PHPW_APP_ROOT || path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..'));
 const php = new PHP(
     await loadNodeRuntime(process.env.PHPW_VERSION || '8.3', {
         emscriptenOptions: { processId: process.pid },

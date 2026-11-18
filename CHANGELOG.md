@@ -1,5 +1,40 @@
 # Changelog
 
+## 2026-11-11 (night) — Fresh-clone install verification & local-run fixes
+
+Verified by installing a pristine `git archive` copy end-to-end at a foreign
+path (`voca:install` → Vite build → **241/241 tests** → browser sweep +
+registration flow, all clean).
+
+### Fixed
+
+- **`phpunit.wasm.xml` hardcoded `APP_BASE_PATH=/home/user/calling-agent`:**
+  any checkout at another path booted the wrong application (170 errors,
+  `MissingAppKeyException`). Removed — `bootstrap/app.php` already passes its
+  own `dirname(__DIR__)`, so the suite is now path-independent.
+- **`mini_composer.py` baked absolute paths** into every generated autoload
+  map, so a copied or moved vendor tree silently loaded classes from the old
+  location. Maps now emit relocatable `$vendorDir`/`$baseDir` expressions
+  exactly like real Composer, and the repo root is resolved from the script
+  location (override: `PHPW_APP_ROOT`).
+- **`extract-libs.mjs` never placed SwiftShader's Vulkan ICD/libs beside the
+  Chromium binary**, so software WebGL failed on a fresh extract ("Internal
+  Vulkan error (-3)"; THREE.js landing errors). It now copies
+  `libEGL/libGLESv2/libvk_swiftshader/libvulkan` + the ICD JSON next to the
+  binary; `sweep.mjs`/`flow.mjs` also export `swiftshader/` on
+  `LD_LIBRARY_PATH`.
+- **`voca:doctor` crashed with an uncaught `QueryException`** when the
+  database was unreachable (queue-heartbeat cache read and provider count
+  ran outside any guard) — the diagnostics tool now reports honest FAIL rows
+  instead of crashing. The Python-worker check also no longer FAILs a fresh
+  local checkout where voice is disabled (`VOICE_ENABLED=false`); it FAILs
+  only when voice was actually switched on without the runtime.
+
+### Added
+
+- **`PHPW_APP_ROOT` env override** in `phpw.mjs`/`serve.mjs` so the WASM
+  harness can run against any checkout (used to test pristine clones).
+
 ## 2026-11-11 (late evening) — Sandbox PHP runtime & headless-browser eyes
 
 ### Added
@@ -12,7 +47,7 @@
   auto-discovery keeps working.
 - **`npm run test:php:wasm`:** the entire PHPUnit suite — **241 tests / 1,806
   assertions, green in ~16s** — real migrations, bcrypt, HTTP kernel, sqlite.
-  Uses `phpunit.wasm.xml` (result cache off, `APP_BASE_PATH`) and is honest
+  Uses `phpunit.wasm.xml` (result cache off) and is honest
   about limits: `artisan test`'s subprocess layers report unavailable instead of
   faking it; doctor's Python probes degrade to explicit WARNINGs.
 - **Headless browser harness (`tooling/browser/`):** npm-bundled Chromium

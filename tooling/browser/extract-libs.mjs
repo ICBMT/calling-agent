@@ -47,5 +47,14 @@ if (!fs.existsSync(swiftDir)) {
     expandTar('swiftshader', swiftDir);
 }
 
+// Chromium's GPU process dlopens the SwiftShader Vulkan ICD from its own
+// module directory (ANGLE "SwANGLE"). Copy the libs beside the binary or
+// every WebGL context fails with "Internal Vulkan error (-3)".
+for (const f of ['libEGL.so', 'libGLESv2.so', 'libvk_swiftshader.so', 'libvulkan.so.1', 'vk_swiftshader_icd.json']) {
+    const src = path.join(swiftDir, f);
+    const dst = path.join(DEST, f);
+    if (fs.existsSync(src) && !fs.existsSync(dst)) fs.copyFileSync(src, dst);
+}
+
 const count = fs.readdirSync(libsDir, { recursive: true }).length;
 console.log(`chromium ready at ${chromiumBin} (${count} lib files)`);

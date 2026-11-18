@@ -1,6 +1,6 @@
 # Project status — Voca
 
-**Updated:** November 10, 2026  
+**Updated:** November 11, 2026  
 **Release:** Foundation (M1) + Milestone 2 Secure Provider Control Plane + Milestone 3 Real-Time Browser Voice Engine + Milestone 4 Telephony Media Gateway Foundation & Production Deployment System  
 **Overall:** M1, M2, and M3 locally approved. **Production deployment system, automated installation/upgrade tooling, and Milestone 4 telephony gateway delivered and verified locally.** Live-service acceptance with external carriers/SIP trunks remains gated on production infrastructure credentials.
 
@@ -25,6 +25,7 @@
     12. Configured AI providers freshness & production security checks (`APP_DEBUG`, `SESSION_SECURE_COOKIE`).
 - CLI table output with clear PASS/WARN/FAIL status badges and concrete remediation steps.
 - Machine-readable `--json` flag for integration into CI/CD pipelines, container health checks, and Datadog/Zabbix monitoring.
+- Crash-proof under degraded infrastructure: cache/provider probes degrade to honest WARNING/FAIL rows when the database is unreachable, and the Python-worker check only FAILs when voice is enabled (`VOICE_ENABLED=true`), so a fresh local checkout reports healthy.
 
 ### 2. Automated Upgrades (`php artisan voca:upgrade` & `bin/upgrade.sh`)
 

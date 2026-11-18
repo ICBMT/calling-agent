@@ -14,7 +14,7 @@ import { PHP, PHPRequestHandler, setPhpIniEntries } from '@php-wasm/universal';
 import { loadNodeRuntime, createNodeFsMountHandler } from '@php-wasm/node';
 
 const TOOL_ROOT = path.dirname(fileURLToPath(import.meta.url));
-const APP_ROOT = path.resolve(TOOL_ROOT, '..', '..');
+const APP_ROOT = path.resolve(process.env.PHPW_APP_ROOT || path.resolve(TOOL_ROOT, '..', '..'));
 const DOC_ROOT = path.join(APP_ROOT, 'public');
 const PORT = Number(process.argv[2] || process.env.PORT || 8000);
 const PHPW_VERSION = process.env.PHPW_VERSION || '8.3';

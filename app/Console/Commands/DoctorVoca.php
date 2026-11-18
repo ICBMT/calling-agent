@@ -66,13 +66,19 @@ class DoctorVoca extends Command
             $depsCheck = @shell_exec(escapeshellcmd($venvPython).' -c "import livekit.agents, livekit.plugins.openai, livekit.plugins.google; print(\'OK\')" 2>/dev/null');
             $pythonDepsOk = trim((string) $depsCheck) === 'OK';
         }
+        // Voice is opt-in (VOICE_ENABLED). A missing worker runtime is only
+        // critical when voice has been switched on; otherwise warn so a fresh
+        // local checkout (composer run setup) still reports healthy.
+        $voiceEnabled = (bool) config('voice.enabled');
         $checks['python_worker'] = [
             'category' => 'Voice Engine',
             'name' => 'Python worker runtime (.venv)',
-            'status' => ($pythonVenvOk && $pythonDepsOk) ? 'PASS' : ($pythonVenvOk ? 'WARNING' : 'FAIL'),
+            'status' => ($pythonVenvOk && $pythonDepsOk) ? 'PASS' : ($pythonVenvOk ? 'WARNING' : ($voiceEnabled ? 'FAIL' : 'WARNING')),
             'detail' => ($pythonVenvOk && $pythonDepsOk)
                 ? "Python {$pythonVersionStr} with livekit-agents, OpenAI, and Google Gemini plugins installed."
-                : ($pythonVenvOk ? "Python {$pythonVersionStr} found, but required LiveKit plugins are missing." : 'voice-worker/.venv/bin/python not found.'),
+                : ($pythonVenvOk
+                    ? "Python {$pythonVersionStr} found, but required LiveKit plugins are missing."
+                    : 'voice-worker/.venv/bin/python not found.'.($voiceEnabled ? '' : ' Voice engine is disabled; install it before enabling VOICE_ENABLED.')),
             'remediation' => ($pythonVenvOk && $pythonDepsOk) ? null : 'Set up worker: python3.11 -m venv voice-worker/.venv && voice-worker/.venv/bin/pip install "livekit-agents[openai]==1.8.11" "livekit-plugins-google==1.8.11"',
         ];
 
@@ -122,7 +128,15 @@ class DoctorVoca extends Command
         ];
 
         // 8. Queue Worker Heartbeat
-        $queueHeartbeat = Cache::get('system:queue_heartbeat');
+        // The heartbeat lives in the cache (database store by default), so a
+        // broken database must degrade this check instead of crashing doctor.
+        try {
+            $queueHeartbeat = Cache::get('system:queue_heartbeat');
+            $queueCacheAvailable = true;
+        } catch (Throwable) {
+            $queueHeartbeat = null;
+            $queueCacheAvailable = false;
+        }
         $queueOk = is_numeric($queueHeartbeat) && (time() - (int) $queueHeartbeat) <= 60;
         $checks['queue'] = [
             'category' => 'Queue',
@@ -130,7 +144,9 @@ class DoctorVoca extends Command
             'status' => $queueOk ? 'PASS' : 'WARNING',
             'detail' => $queueOk
                 ? 'Queue worker heartbeat received within the last 60 seconds.'
-                : ($queueHeartbeat ? 'Queue worker heartbeat is older than 60 seconds (Stalled).' : 'No worker heartbeat recorded in cache.'),
+                : (! $queueCacheAvailable
+                    ? 'Cache store is unreachable; heartbeat could not be read.'
+                    : ($queueHeartbeat ? 'Queue worker heartbeat is older than 60 seconds (Stalled).' : 'No worker heartbeat recorded in cache.')),
             'remediation' => $queueOk ? null : 'Start a background queue worker: php artisan queue:work --sleep=3 --tries=3',
         ];
 
@@ -155,13 +171,22 @@ class DoctorVoca extends Command
         ];
 
         // 11. AI Provider Configurations
-        $providerCount = ProviderConfiguration::query()->count();
-        $freshCount = ProviderConfiguration::query()->get()->filter(fn ($c) => $c->freshCatalog())->count();
+        try {
+            $providerCount = ProviderConfiguration::query()->count();
+            $freshCount = ProviderConfiguration::query()->get()->filter(fn ($c) => $c->freshCatalog())->count();
+            $providersAvailable = true;
+        } catch (Throwable) {
+            $providerCount = 0;
+            $freshCount = 0;
+            $providersAvailable = false;
+        }
         $checks['providers'] = [
             'category' => 'AI Providers',
             'name' => 'AI provider configurations',
-            'status' => $freshCount > 0 ? 'PASS' : ($providerCount > 0 ? 'WARNING' : 'WARNING'),
-            'detail' => "{$providerCount} provider configurations saved ({$freshCount} verified within 24h).",
+            'status' => $freshCount > 0 ? 'PASS' : 'WARNING',
+            'detail' => $providersAvailable
+                ? "{$providerCount} provider configurations saved ({$freshCount} verified within 24h)."
+                : 'Provider configurations could not be read (database unavailable).',
             'remediation' => $freshCount > 0 ? null : 'Visit /app/providers, add an OpenAI or Gemini API key, and click Test Connection.',
         ];
 

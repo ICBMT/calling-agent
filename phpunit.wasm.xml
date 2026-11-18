@@ -27,7 +27,6 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
-        <server name="APP_BASE_PATH" value="/home/user/calling-agent"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_STORE" value="array"/>
