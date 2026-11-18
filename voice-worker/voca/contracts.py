@@ -28,6 +28,8 @@ MODELS = frozenset(
 GEMINI_MODELS = frozenset(
     {
         "gemini-3.8-live",
+        "gemini-3.8-live-extended-thinking",
+        "gemini-3.1-flash-live-preview",
     }
 )
 VOICES = frozenset(

@@ -79,6 +79,12 @@ def test_valid_gemini_grant_accepts_and_validates_models_and_voices(dispatch, gr
     assert grant.configuration.model == "gemini-3.8-live"
     assert grant.configuration.voice == "Kore"
 
+    # Every documented Gemini Live model stays accepted (full provider matrix):
+    for model in ("gemini-3.8-live-extended-thinking", "gemini-3.1-flash-live-preview"):
+        extra = copy.deepcopy(grant_data)
+        extra["configuration"]["model"] = model
+        assert SessionGrant.parse(extra, dispatch).configuration.model == model
+
     # Incompatible voice for Gemini:
     invalid_voice = copy.deepcopy(grant_data)
     invalid_voice["configuration"]["voice"] = "marin"

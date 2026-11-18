@@ -26,9 +26,12 @@ export function voicePlayground(initialOptions = null) {
         voice: '',
         language: '',
         consent: false,
-        status: 'idle', // idle, requesting_mic, connecting, active, reconnecting, stopping, ended, failed
+        status: 'idle', // idle, requesting_mic, connecting, waiting_worker, active, reconnecting, stopping, ended, failed
+        stage: 'idle', // idle, microphone, session, room, worker, ready — which setup step we are on
         agentState: 'idle',
         userState: 'idle',
+        micLevel: 0,
+        agentLevel: 0,
         error: null,
         errorCode: null,
         warning: null,
@@ -74,6 +77,7 @@ export function voicePlayground(initialOptions = null) {
         transport: null,
         pollTimer: null,
         perfTimer: null,
+        levelsTimer: null,
         countdownTimer: null,
 
         init() {
@@ -244,7 +248,9 @@ export function voicePlayground(initialOptions = null) {
         },
 
         get isLive() {
-            return ['connecting', 'active', 'reconnecting'].includes(this.status);
+            return ['connecting', 'waiting_worker', 'active', 'reconnecting'].includes(
+                this.status,
+            );
         },
 
         get allowedVoices() {
@@ -266,6 +272,70 @@ export function voicePlayground(initialOptions = null) {
 
         get otherProviders() {
             return this.options?.choices?.other_providers || [];
+        },
+
+        // ---- Siri-style presence orb (real state + measured levels only) ----
+        get orbMode() {
+            if (this.status === 'failed') return 'failed';
+            if (this.reconnecting) return 'reconnecting';
+            if (['requesting_mic', 'connecting', 'waiting_worker'].includes(this.status))
+                return 'connecting';
+            if (this.status !== 'active') return 'idle';
+            if (this.agentState === 'thinking') return 'thinking';
+            if (this.agentState === 'speaking') return 'speaking';
+            if (this.userState === 'speaking' && !this.muted) return 'listening';
+            return 'idle';
+        },
+
+        get orbStyle() {
+            const mic = Math.min(1, Math.max(0, this.micLevel));
+            const agent = Math.min(1, Math.max(0, this.agentLevel));
+            return `--mic-level:${mic.toFixed(3)};--agent-level:${agent.toFixed(3)};`;
+        },
+
+        get orbCaption() {
+            switch (this.orbMode) {
+                case 'connecting':
+                    return this.status === 'requesting_mic'
+                        ? 'Waiting for microphone permission…'
+                        : this.status === 'waiting_worker'
+                          ? 'Starting the voice worker and provider handshake…'
+                          : 'Connecting the encrypted audio room…';
+                case 'reconnecting':
+                    return 'Audio dropped — reconnecting…';
+                case 'failed':
+                    return 'Session failed. See the message below.';
+                case 'thinking':
+                    return 'Thinking…';
+                case 'speaking':
+                    return 'Answering — speak anytime to interrupt.';
+                case 'listening':
+                    return 'Listening…';
+                default:
+                    return this.muted
+                        ? 'Microphone muted — unmute to speak.'
+                        : 'Ready — start speaking.';
+            }
+        },
+
+        get stageSteps() {
+            const order = ['microphone', 'session', 'room', 'worker', 'ready'];
+            const labels = {
+                microphone: 'Microphone',
+                session: 'Session',
+                room: 'Audio room',
+                worker: 'Voice worker',
+                ready: 'Live',
+            };
+            const current = order.indexOf(this.stage);
+            const live = this.status === 'active';
+            // `stage` names the step that just completed; the next one is in flight.
+            return order.map((id, index) => ({
+                id,
+                label: labels[id],
+                done: live || index <= current,
+                active: !live && index === current + 1,
+            }));
         },
 
         providerChanged() {
@@ -357,6 +427,10 @@ export function voicePlayground(initialOptions = null) {
                 clearInterval(this.perfTimer);
                 this.perfTimer = null;
             }
+            if (this.levelsTimer) {
+                clearInterval(this.levelsTimer);
+                this.levelsTimer = null;
+            }
             if (this.countdownTimer) {
                 clearInterval(this.countdownTimer);
                 this.countdownTimer = null;
@@ -391,6 +465,7 @@ export function voicePlayground(initialOptions = null) {
             this.errorCode = null;
             this.warning = null;
             this.status = 'requesting_mic';
+            this.stage = 'idle';
 
             let mic;
             let VoiceTransport;
@@ -411,6 +486,7 @@ export function voicePlayground(initialOptions = null) {
                 } catch {}
                 return;
             }
+            this.stage = 'microphone';
 
             this.status = 'connecting';
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -468,8 +544,12 @@ export function voicePlayground(initialOptions = null) {
 
             this.sessionId = data.session.id;
             this.expiresAt = data.session.expires_at;
+            this.stage = 'session';
             this.resetTranscriptAndMetrics();
             this.startCountdown();
+            // Poll from the moment the session exists: worker/provider failures must
+            // surface while the WebRTC room is still connecting, not a minute later.
+            this.startPolling(currentGen);
 
             const container = this.getAudioContainer();
 
@@ -521,9 +601,12 @@ export function voicePlayground(initialOptions = null) {
             }
 
             if (this.generation !== currentGen) return;
-            this.status = 'active';
-            this.startPolling(currentGen);
+            // The WebRTC room is up, but the worker still has to claim the job and
+            // handshake the realtime provider. Do not claim "live" until it confirms.
+            this.stage = 'room';
+            this.status = 'waiting_worker';
             this.startPerformanceMonitoring(currentGen);
+            this.startLevelSampling(currentGen);
         },
 
         startPolling(currentGen) {
@@ -545,7 +628,15 @@ export function voicePlayground(initialOptions = null) {
                     if (this.generation !== currentGen) return;
                     const session = data?.session;
                     if (!session) return;
-                    if (session.state === 'active' && this.status === 'connecting') {
+                    if (session.state === 'starting' && this.stage === 'room') {
+                        // The worker has claimed the job and is handshaking the provider.
+                        this.stage = 'worker';
+                    }
+                    if (
+                        session.state === 'active' &&
+                        ['connecting', 'waiting_worker'].includes(this.status)
+                    ) {
+                        this.stage = 'ready';
                         this.status = 'active';
                     }
                     if (isTerminal(session.state)) {
@@ -572,11 +663,41 @@ export function voicePlayground(initialOptions = null) {
             }, 2000);
         },
 
+        // Fast, animation-grade sampling of the same RTCStats levels. A miss leaves
+        // the previous value to decay; levels are never forced to a fake non-zero.
+        startLevelSampling(currentGen) {
+            if (this.levelsTimer) clearInterval(this.levelsTimer);
+            this.levelsTimer = setInterval(async () => {
+                if (this.generation !== currentGen || !this.transport || !this.isLive) return;
+                try {
+                    const stats = await this.transport.performance();
+                    if (this.generation !== currentGen) return;
+                    const decay = (previous) => Math.max(0, previous * 0.75 - 0.01);
+                    this.micLevel =
+                        this.muted || !Number.isFinite(stats.mic_level)
+                            ? decay(this.micLevel)
+                            : Math.min(1, Math.max(stats.mic_level * 2.2, decay(this.micLevel)));
+                    this.agentLevel = !Number.isFinite(stats.agent_level)
+                        ? decay(this.agentLevel)
+                        : Math.max(stats.agent_level * 2.2, decay(this.agentLevel));
+                } catch {
+                    // A transient stats failure must not freeze the visualization.
+                }
+            }, 160);
+        },
+
         handlePacket(bytes) {
             const packet = parsePacket(bytes, this.sessionId);
             if (!packet) return;
 
             switch (packet.type) {
+                case 'ready':
+                    // The worker finished the provider handshake and owns the room audio.
+                    this.stage = 'ready';
+                    if (['connecting', 'waiting_worker'].includes(this.status)) {
+                        this.status = 'active';
+                    }
+                    break;
                 case 'agent_state':
                     this.agentState = packet.state;
                     break;
@@ -673,6 +794,10 @@ export function voicePlayground(initialOptions = null) {
             this.warning = null;
             this.reconnecting = false;
             this.muted = false;
+            this.micLevel = 0;
+            this.agentLevel = 0;
+            this.agentState = 'idle';
+            this.userState = 'idle';
             this.userPartial = null;
             this.assistantPartial = null;
             if (id) {

@@ -64,6 +64,12 @@ for (const dir of [APP_ROOT, '/tmp', process.env.HOME || '/tmp', '/usr/bin']) {
 
 const handler = new PHPRequestHandler({
     phpFactory: async () => php,
+    // Disable the handler's built-in server-side cookie jar. By default it
+    // remembers every Set-Cookie and force-sends it on later requests,
+    // overriding the real client headers — one sign-in would keep every
+    // later cookie-less request authenticated. We want a stateless HTTP
+    // bridge: cookies come only from the actual browser/curl client.
+    cookieStore: null,
     documentRoot: DOC_ROOT,
     absoluteUrl: `http://127.0.0.1:${PORT}/`,
     isStaticFilePath: (p) => {
@@ -111,7 +117,10 @@ http.createServer(async (req, res) => {
         });
         const headers = {};
         for (const [k, vals] of Object.entries(response.headers || {})) {
-            headers[k] = Array.isArray(vals) ? vals.join('; ') : String(vals);
+            // Multiple Set-Cookie lines must be emitted verbatim — joining them
+            // into one header makes browsers/curl treat later cookies as
+            // attributes of the first (session cookie silently dropped).
+            headers[k] = Array.isArray(vals) && k.toLowerCase() !== 'set-cookie' ? vals.join('; ') : vals;
         }
         res.writeHead(response.httpStatusCode || 200, headers);
         res.end(response.bytes);

@@ -34,7 +34,7 @@ return [
             ],
             'gemini' => [
                 'name' => 'Google Gemini',
-                'models' => ['gemini-3.8-live'],
+                'models' => ['gemini-3.8-live', 'gemini-3.8-live-extended-thinking', 'gemini-3.1-flash-live-preview'],
                 'transcription_model' => 'gemini-transcribe',
                 'languages' => ['en' => 'English', 'ur' => 'Urdu', 'hi' => 'Hindi'],
             ],

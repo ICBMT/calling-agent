@@ -647,3 +647,128 @@ describe('Voice Playground session endpoints (regression: no hardcoded /workspac
         assert.equal(ctrl.sessionUrl('show', 'a b/c'), '/app/voice-sessions/a%20b%2Fc');
     });
 });
+
+describe('Browser audio level extraction (orb animation input)', () => {
+    it('reads agent level from inbound-rtp and mic level from media-source', () => {
+        const report = new Map([
+            ['inbound-1', { type: 'inbound-rtp', kind: 'audio', audioLevel: 0.42 }],
+            ['mic-1', { type: 'media-source', kind: 'audio', audioLevel: 0.13 }],
+        ]);
+        const result = audioPerformance([report], null);
+        assert.equal(result.values.agent_level, 0.42);
+        assert.equal(result.values.mic_level, 0.13);
+    });
+
+    it('never invents levels for missing or out-of-range rows', () => {
+        const report = new Map([
+            ['inbound-1', { type: 'inbound-rtp', kind: 'audio' }],
+            ['mic-1', { type: 'media-source', kind: 'audio', audioLevel: 7 }],
+            ['video-1', { type: 'inbound-rtp', kind: 'video', audioLevel: 0.9 }],
+        ]);
+        const result = audioPerformance([report], null);
+        assert.equal(result.values.agent_level, undefined);
+        assert.equal(result.values.mic_level, undefined);
+    });
+});
+
+describe('Voice presence orb state machine', () => {
+    const baseOptions = {
+        available: true,
+        agents: [{ id: 1, name: 'Receptionist', language: 'en' }],
+        choices: {
+            provider: 'openai',
+            models: [{ id: 'gpt-realtime', voice_ids: ['alloy'] }],
+            voices: [{ id: 'alloy', name: 'Alloy' }],
+            default: { model: 'gpt-realtime', voice: 'alloy', language: 'en' },
+        },
+    };
+
+    function controller() {
+        const ctrl = voicePlayground(baseOptions);
+        ctrl.init();
+        return ctrl;
+    }
+
+    it('progresses through setup stages instead of claiming an instant live session', () => {
+        const ctrl = controller();
+        assert.equal(ctrl.stage, 'idle');
+        assert.equal(ctrl.orbMode, 'idle');
+
+        ctrl.status = 'requesting_mic';
+        assert.equal(ctrl.orbMode, 'connecting');
+
+        ctrl.status = 'connecting';
+        ctrl.stage = 'session';
+        assert.equal(ctrl.orbMode, 'connecting');
+
+        ctrl.status = 'waiting_worker';
+        ctrl.stage = 'room';
+        assert.equal(ctrl.orbMode, 'connecting');
+        assert.match(ctrl.orbCaption, /voice worker/);
+        assert.deepEqual(
+            ctrl.stageSteps.map((step) => [step.id, step.done, step.active]),
+            [
+                ['microphone', true, false],
+                ['session', true, false],
+                ['room', true, false],
+                ['worker', false, true],
+                ['ready', false, false],
+            ],
+        );
+    });
+
+    it('maps live conversation state onto orb modes', () => {
+        const ctrl = controller();
+        ctrl.status = 'active';
+        ctrl.stage = 'ready';
+        assert.equal(ctrl.orbMode, 'idle');
+        assert.ok(ctrl.stageSteps.every((step) => step.done));
+
+        ctrl.userState = 'speaking';
+        assert.equal(ctrl.orbMode, 'listening');
+
+        ctrl.userState = 'idle';
+        ctrl.agentState = 'thinking';
+        assert.equal(ctrl.orbMode, 'thinking');
+
+        ctrl.agentState = 'speaking';
+        assert.equal(ctrl.orbMode, 'speaking');
+        assert.match(ctrl.orbCaption, /interrupt/);
+
+        ctrl.agentState = 'idle';
+        ctrl.muted = true;
+        assert.match(ctrl.orbCaption, /muted/);
+
+        ctrl.reconnecting = true;
+        assert.equal(ctrl.orbMode, 'reconnecting');
+    });
+
+    it('clamps measured levels into the orb style variables', () => {
+        const ctrl = controller();
+        ctrl.micLevel = 4;
+        ctrl.agentLevel = -1;
+        assert.equal(ctrl.orbStyle, '--mic-level:1.000;--agent-level:0.000;');
+        ctrl.micLevel = 0.5;
+        ctrl.agentLevel = 0.25;
+        assert.equal(ctrl.orbStyle, '--mic-level:0.500;--agent-level:0.250;');
+    });
+
+    it('handles the worker ready packet by going live', () => {
+        const ctrl = controller();
+        ctrl.status = 'waiting_worker';
+        ctrl.stage = 'room';
+        ctrl.sessionId = '0193132e-4b2a-7142-9218-356a7bc34e21';
+        const packet = new TextEncoder().encode(
+            JSON.stringify({
+                v: 1,
+                session_id: ctrl.sessionId,
+                seq: 1,
+                sent_at: Date.now() / 1000,
+                type: 'ready',
+            }),
+        );
+        ctrl.handlePacket(packet);
+        assert.equal(ctrl.status, 'active');
+        assert.equal(ctrl.stage, 'ready');
+    });
+});

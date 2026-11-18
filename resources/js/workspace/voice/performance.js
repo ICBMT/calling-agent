@@ -19,10 +19,20 @@ export function audioPerformance(reports, previous = null) {
                 if (finite(row.jitter)) result.jitter_ms = row.jitter * 1000;
                 if (finite(row.packetsLost)) result.packets_lost = row.packetsLost;
                 if (finite(row.bytesReceived)) result.bytes_received = row.bytesReceived;
+                // Live remote (agent) speech energy, 0..1. Drives the Siri-style orb; never invented.
+                if (finite(row.audioLevel) && row.audioLevel <= 1) result.agent_level = row.audioLevel;
                 if (finite(row.jitterBufferDelay) && row.jitterBufferEmittedCount > 0)
                     result.mean_buffer_ms =
                         (row.jitterBufferDelay / row.jitterBufferEmittedCount) * 1000;
             }
+            // Live local microphone energy, 0..1 (outbound media-source / track stats).
+            if (
+                (row.type === 'media-source' || row.type === 'track') &&
+                (row.kind || row.mediaType) === 'audio' &&
+                finite(row.audioLevel) &&
+                row.audioLevel <= 1
+            )
+                result.mic_level = row.audioLevel;
             if (
                 row.type === 'outbound-rtp' &&
                 (row.kind || row.mediaType) === 'audio' &&

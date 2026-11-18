@@ -14,11 +14,12 @@
                 <span class="status-tag status-tag--large"
                     :class="{
                         'status-tag--good': status === 'active',
-                        'status-tag--warn': reconnecting || status === 'connecting' || status === 'requesting_mic',
+                        'status-tag--warn': reconnecting || status === 'connecting' || status === 'waiting_worker' || status === 'requesting_mic',
                         'status-tag--danger': status === 'failed'
                     }"
                     x-text="
                         status === 'active' ? 'Live session' :
+                        status === 'waiting_worker' ? 'Starting the voice worker...' :
                         status === 'connecting' ? 'Connecting to LiveKit...' :
                         status === 'requesting_mic' ? 'Requesting microphone...' :
                         reconnecting ? 'Reconnecting audio...' :
@@ -179,6 +180,31 @@
                             <x-icon name="clock" />
                             <span x-text="formatCountdown()">--:--</span>
                         </div>
+                    </div>
+
+                    <!-- Siri-style presence orb: driven only by real session state and
+                         measured RTCStats audio levels (never a canned animation loop). -->
+                    <div class="voice-orb-stage">
+                        <div class="voice-orb-wrap" :class="'voice-orb-wrap--' + orbMode" :style="orbStyle" aria-hidden="true">
+                            <div class="voice-orb">
+                                <div class="voice-orb__aura"></div>
+                                <div class="voice-orb__swirl"></div>
+                                <div class="voice-orb__core"></div>
+                                <div class="voice-orb__ring voice-orb__ring--a"></div>
+                                <div class="voice-orb__ring voice-orb__ring--b"></div>
+                            </div>
+                        </div>
+                        <p class="voice-orb-caption" x-text="orbCaption" aria-live="polite"></p>
+                        <ol class="voice-steps" aria-label="Connection progress">
+                            <template x-for="step in stageSteps" :key="step.id">
+                                <li class="voice-step" :class="{ 'voice-step--done': step.done, 'voice-step--active': step.active }">
+                                    <span class="voice-step__dot">
+                                        <svg x-show="step.done" viewBox="0 0 10 10" width="8" height="8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 5.5l2.5 2.5 4.5-6" /></svg>
+                                    </span>
+                                    <span class="voice-step__label" x-text="step.label"></span>
+                                </li>
+                            </template>
+                        </ol>
                     </div>
 
                     <div class="voice-state-indicators">
