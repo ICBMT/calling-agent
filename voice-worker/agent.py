@@ -10,7 +10,7 @@ import re
 import sys
 
 import aiohttp
-from livekit import rtc
+from livekit import api, rtc
 from livekit.agents import AgentServer, JobContext, JobRequest, WorkerPermissions, cli
 
 from voca.contracts import ContractError, Dispatch
@@ -63,18 +63,71 @@ async def browser_session(ctx: JobContext) -> None:
     try:
         settings = Settings.from_env()
         dispatch = Dispatch.parse(ctx.job.metadata, ctx.job.room.name)
-        async with aiohttp.ClientSession(
-            cookie_jar=aiohttp.DummyCookieJar(),
-            trust_env=False,
-        ) as http:
-            control = ControlClient(settings, http)
+    except Exception as error:
+        safe_log("worker.rejected_job", error=error)
+        ctx.shutdown(reason="browser voice job rejected")
+        return
+
+    async with aiohttp.ClientSession(
+        cookie_jar=aiohttp.DummyCookieJar(),
+        trust_env=False,
+    ) as http:
+        control = ControlClient(settings, http)
+        grant = None
+        runtime = None
+        try:
             grant = await control.claim(dispatch, ctx.job.id)
             runtime = VoiceRuntime(ctx, control, grant)
             await runtime.run()
-    except Exception:
-        # A failed one-use claim is not retried. PHP expiry/sweep retains the cleanup obligation.
-        safe_log("worker.rejected_job")
-        ctx.shutdown(reason="browser voice job rejected")
+        except Exception as error:
+            if grant is None:
+                # The one-use claim may have committed before the worker rejected its
+                # response contract. We cannot finish without a validated lease, so log
+                # the exception class and let the bounded lease/reaper close that session.
+                safe_log(
+                    "worker.claim_failed",
+                    dispatch.session_id,
+                    "worker_timeout",
+                    error,
+                )
+            else:
+                safe_log("worker.job_failed", grant.session_id, "worker_timeout", error)
+                if runtime is not None:
+                    runtime.stop("worker_timeout")
+                    try:
+                        await runtime.shutdown()
+                    except Exception as cleanup_error:
+                        safe_log(
+                            "worker.session_cleanup_failed",
+                            grant.session_id,
+                            "worker_timeout",
+                            cleanup_error,
+                        )
+                else:
+                    # Runtime construction failed after claim. Fail immediately rather
+                    # than waiting for the authority lease to expire and strand the room.
+                    finish_confirmed = False
+                    try:
+                        await control.finish(grant, ctx.job.id, {}, "worker_timeout")
+                        finish_confirmed = True
+                    except Exception as cleanup_error:
+                        safe_log(
+                            "worker.session_cleanup_failed",
+                            grant.session_id,
+                            "worker_timeout",
+                            cleanup_error,
+                        )
+                    if not finish_confirmed:
+                        try:
+                            await ctx.api.room.delete_room(api.DeleteRoomRequest(room=grant.room))
+                        except Exception as cleanup_error:
+                            safe_log(
+                                "worker.session_cleanup_failed",
+                                grant.session_id,
+                                "worker_timeout",
+                                cleanup_error,
+                            )
+            ctx.shutdown(reason="browser voice job failed")
 
 
 if __name__ == "__main__":

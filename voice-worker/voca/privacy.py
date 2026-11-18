@@ -9,6 +9,9 @@ SAFE_EVENTS = frozenset(
     {
         "worker.starting",
         "worker.rejected_job",
+        "worker.claim_failed",
+        "worker.job_failed",
+        "worker.session_cleanup_failed",
         "session.claimed",
         "session.stopped",
         "session.cleanup_pending",
@@ -77,8 +80,19 @@ def install_safe_logging() -> None:
     sys.excepthook = unhandled
 
 
-def safe_log(code: str, session_id: str | None = None, reason: str | None = None) -> None:
-    logging.getLogger("voca").warning(code, extra={"session_id": session_id, "reason": reason})
+def safe_log(
+    code: str,
+    session_id: str | None = None,
+    reason: str | None = None,
+    error: BaseException | None = None,
+) -> None:
+    # Preserve only the exception class through safe_record; never its text or traceback.
+    exc_info = (type(error), None, None) if error is not None else None
+    logging.getLogger("voca").warning(
+        code,
+        extra={"session_id": session_id, "reason": reason},
+        exc_info=exc_info,
+    )
 
 
 def safe_text(text: str, secrets: tuple[str, ...] = ()) -> str:
