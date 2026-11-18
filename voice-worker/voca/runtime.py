@@ -11,15 +11,14 @@ import aiohttp
 from livekit import api, rtc
 from livekit.agents import AutoSubscribe, JobContext, llm
 
-from .contracts import ERROR_CODES, SessionGrant, load_object
 from .captions import Captions
+from .contracts import ERROR_CODES, SessionGrant, load_object
 from .control import ControlClient, ControlError
 from .events import RoomEvents
 from .lease import AuthorityLease
 from .metrics import Measurements
 from .native import build_session, greeting_instructions, room_options
 from .privacy import safe_log, safe_text
-
 
 # Keep the agent's provider session alive long enough for LiveKit's default
 # jittered client reconnect schedule to restore the browser participant.
@@ -186,7 +185,7 @@ class VoiceRuntime:
         try:
             if self.session:
                 await asyncio.wait_for(self.session.interrupt(force=True), timeout=3)
-        except Exception:
+        except Exception:  # noqa: BLE001 - realtime plugin exceptions vary by provider
             # A browser disconnect can make the provider-side interrupt transiently fail.
             # Do not tear down the room here: the browser stays muted while reconnecting
             # and must confirm interruption over RPC before it unmutes. The watchdog owns

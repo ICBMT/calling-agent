@@ -3,7 +3,6 @@ import json
 import logging
 
 import pytest
-
 from livekit.agents.cli.log import JsonFormatter
 
 from voca.captions import Captions, StreamRedactor

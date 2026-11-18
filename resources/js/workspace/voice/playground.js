@@ -248,9 +248,7 @@ export function voicePlayground(initialOptions = null) {
         },
 
         get isLive() {
-            return ['connecting', 'waiting_worker', 'active', 'reconnecting'].includes(
-                this.status,
-            );
+            return ['connecting', 'waiting_worker', 'active', 'reconnecting'].includes(this.status);
         },
 
         get allowedVoices() {

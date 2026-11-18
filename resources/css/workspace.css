@@ -3604,11 +3604,18 @@
     position: absolute;
     inset: -26px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(109, 40, 217, 0.35), rgba(167, 139, 250, 0.18) 55%, transparent 72%);
+    background: radial-gradient(
+        circle,
+        rgba(109, 40, 217, 0.35),
+        rgba(167, 139, 250, 0.18) 55%,
+        transparent 72%
+    );
     filter: blur(10px);
     opacity: 0.65;
     transform: scale(calc(1 + var(--agent-level) * 0.55 + var(--mic-level) * 0.3));
-    transition: transform 0.15s ease-out, opacity 0.3s ease;
+    transition:
+        transform 0.15s ease-out,
+        opacity 0.3s ease;
 }
 .voice-orb__swirl {
     position: absolute;
@@ -3662,7 +3669,12 @@
     animation-duration: 5s;
 }
 .voice-orb-wrap--listening .voice-orb__aura {
-    background: radial-gradient(circle, rgba(215, 255, 0, 0.4), rgba(163, 230, 53, 0.16) 55%, transparent 72%);
+    background: radial-gradient(
+        circle,
+        rgba(215, 255, 0, 0.4),
+        rgba(163, 230, 53, 0.16) 55%,
+        transparent 72%
+    );
 }
 .voice-orb-wrap--speaking .voice-orb__swirl {
     animation-duration: 3.2s;
@@ -3738,7 +3750,9 @@
     place-items: center;
     color: #ffffff;
     background: #ffffff;
-    transition: background 0.2s ease, border-color 0.2s ease;
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease;
 }
 .voice-step--active {
     color: #5b3a75;

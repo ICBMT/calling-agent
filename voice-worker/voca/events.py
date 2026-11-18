@@ -9,7 +9,6 @@ from livekit import rtc
 
 from .contracts import SessionGrant
 
-
 EVENT_RECONNECT_GRACE_SECONDS = 70
 
 
